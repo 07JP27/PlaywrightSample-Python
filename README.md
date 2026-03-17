@@ -677,6 +677,18 @@ pytest tests/scenarios/test_e2e_ec_purchase.py
 pytest tests/scenarios/ --headed --slowmo 500
 ```
 
+#### 📋 エビデンスレポート
+
+全シナリオテストは各画面遷移でスクリーンショットを自動記録し、テスト完了後にHTMLエビデンスレポートを生成します。
+
+```bash
+# テスト実行後、以下にレポートが生成される
+output/evidence/evidence_report.html      # 全テスト統合レポート
+output/evidence/{テスト名}/01_xxx.png     # 各ステップのスクリーンショット
+```
+
+テスト内で `evidence.capture("ステップ名")` を呼ぶことで、連番付きスクリーンショットが保存されます。
+
 ### S1. EC 購買フロー
 
 > 📄 [tests/scenarios/test_e2e_ec_purchase.py](tests/scenarios/test_e2e_ec_purchase.py) — 8 テスト  
