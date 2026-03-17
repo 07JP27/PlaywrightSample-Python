@@ -1,0 +1,296 @@
+"""
+test_07_network.py - ネットワーク制御のサンプル
+
+リクエストの傍受・モック・修正・ブロック、レスポンス待機、
+HAR 記録など、ネットワークレベルの操作を示す。
+"""
+
+import json
+import os
+import tempfile
+
+import pytest
+
+
+# ---------------------------------------------------------------------------
+# 1. リクエスト傍受とレスポンスモック (page.route + route.fulfill)
+# ---------------------------------------------------------------------------
+def test_route_fulfill(page):
+    """リクエスト傍受とレスポンスモック"""
+
+    def handle_route(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({"message": "モックレスポンス"}),
+        )
+
+    page.route("**/api/data", handle_route)
+    page.set_content(
+        '<script>fetch("/api/data").then(r=>r.json()).then(d=>document.title=d.message)</script>'
+    )
+    page.wait_for_function("document.title === 'モックレスポンス'")
+
+
+# ---------------------------------------------------------------------------
+# 2. リクエスト修正 - ヘッダー追加 (route.continue_)
+# ---------------------------------------------------------------------------
+def test_route_continue_with_headers(page):
+    """リクエストにカスタムヘッダーを追加する"""
+    captured_headers: dict = {}
+
+    def add_custom_header(route, request):
+        headers = {**request.headers, "X-Custom-Header": "playwright-test"}
+        route.continue_(headers=headers)
+
+    def capture_request(request):
+        # サーバーへ送信されるヘッダーを記録する
+        if "api/echo" in request.url:
+            captured_headers.update(request.headers)
+
+    page.on("request", capture_request)
+    page.route("**/api/echo", add_custom_header)
+
+    # モック API でヘッダーが渡されたことを確認
+    page.set_content(
+        '<script>fetch("/api/echo").then(r => document.title = "done")</script>'
+    )
+    page.wait_for_function("document.title === 'done'")
+
+    assert captured_headers.get("x-custom-header") == "playwright-test"
+
+
+# ---------------------------------------------------------------------------
+# 3. リクエストブロック (route.abort) - 画像リソースのブロック
+# ---------------------------------------------------------------------------
+def test_route_abort_images(page):
+    """画像リソースへのリクエストをブロックする"""
+    aborted_urls: list[str] = []
+
+    def block_images(route):
+        aborted_urls.append(route.request.url)
+        route.abort()
+
+    # 画像リクエストをすべてブロック
+    page.route("**/*.{png,jpg,jpeg,gif,svg,webp,ico}", block_images)
+    page.goto("https://www.microsoft.com/ja-jp", wait_until="domcontentloaded")
+
+    # 少なくとも 1 件の画像リクエストがブロックされていることを確認
+    assert len(aborted_urls) > 0, "画像リクエストが 1 件もブロックされなかった"
+
+
+# ---------------------------------------------------------------------------
+# 4. レスポンス待機 (page.expect_response)
+# ---------------------------------------------------------------------------
+def test_expect_response(page):
+    """特定のレスポンスを待機する"""
+    with page.expect_response("**/api/status") as response_info:
+        page.set_content(
+            '<script>fetch("/api/status")</script>'
+        )
+        # モック用のルートを先に登録
+        # ここでは set_content の前にルートが必要なので、事前に設定する
+    # expect_response は URL にマッチするレスポンスが来ない場合タイムアウトする
+
+
+def test_expect_response_with_route(page):
+    """route.fulfill と expect_response を組み合わせる"""
+
+    page.route("**/api/status", lambda route: route.fulfill(
+        status=200,
+        content_type="application/json",
+        body=json.dumps({"status": "ok"}),
+    ))
+
+    with page.expect_response("**/api/status") as response_info:
+        page.set_content('<script>fetch("/api/status")</script>')
+
+    response = response_info.value
+    assert response.status == 200
+    assert response.url.endswith("/api/status")
+
+
+# ---------------------------------------------------------------------------
+# 5. リクエスト待機 (page.expect_request)
+# ---------------------------------------------------------------------------
+def test_expect_request(page):
+    """特定のリクエストが発行されるのを待機する"""
+
+    page.route("**/api/submit", lambda route: route.fulfill(
+        status=201,
+        content_type="application/json",
+        body=json.dumps({"id": 1}),
+    ))
+
+    with page.expect_request("**/api/submit") as request_info:
+        page.set_content(
+            """<script>
+            fetch("/api/submit", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({name: "テスト"})
+            })
+            </script>"""
+        )
+
+    request = request_info.value
+    assert request.method == "POST"
+    assert json.loads(request.post_data)["name"] == "テスト"
+
+
+# ---------------------------------------------------------------------------
+# 6. ネットワークイベント監視 (page.on("request"), page.on("response"))
+# ---------------------------------------------------------------------------
+def test_network_events(page):
+    """リクエスト・レスポンスイベントを監視する"""
+    request_urls: list[str] = []
+    response_statuses: list[int] = []
+
+    page.on("request", lambda req: request_urls.append(req.url))
+    page.on("response", lambda res: response_statuses.append(res.status))
+
+    page.goto("https://www.microsoft.com/ja-jp", wait_until="domcontentloaded")
+
+    # ナビゲーションにより複数のリクエストが発生する
+    assert len(request_urls) > 0, "リクエストイベントが発火しなかった"
+    assert len(response_statuses) > 0, "レスポンスイベントが発火しなかった"
+
+    # メインドキュメントのステータスコードを確認
+    assert 200 in response_statuses or 301 in response_statuses or 302 in response_statuses
+
+
+# ---------------------------------------------------------------------------
+# 7. HAR 記録 (record_har_path)
+# ---------------------------------------------------------------------------
+def test_har_recording(browser):
+    """HAR ファイルにネットワークトラフィックを記録する"""
+    har_path = os.path.join(
+        os.path.dirname(__file__), "..", "output", "traces", "network.har"
+    )
+    har_path = os.path.normpath(har_path)
+
+    # HAR 記録を有効にしたコンテキストを作成
+    context = browser.new_context(record_har_path=har_path)
+    har_page = context.new_page()
+
+    har_page.goto("https://www.microsoft.com/ja-jp", wait_until="domcontentloaded")
+
+    # コンテキストを閉じると HAR ファイルが書き出される
+    context.close()
+
+    assert os.path.exists(har_path), "HAR ファイルが生成されなかった"
+    assert os.path.getsize(har_path) > 0, "HAR ファイルが空"
+
+    # HAR の構造を検証
+    with open(har_path, encoding="utf-8") as f:
+        har_data = json.load(f)
+
+    assert "log" in har_data
+    assert len(har_data["log"]["entries"]) > 0, "HAR エントリが記録されていない"
+
+
+# ---------------------------------------------------------------------------
+# 8. ルートのアンインストール (page.unroute)
+# ---------------------------------------------------------------------------
+def test_unroute(page):
+    """登録したルートを解除する"""
+    call_count = 0
+
+    def counting_handler(route):
+        nonlocal call_count
+        call_count += 1
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({"count": call_count}),
+        )
+
+    page.route("**/api/count", counting_handler)
+
+    # 1 回目: ルートが有効
+    page.set_content(
+        '<script>fetch("/api/count").then(r => r.json()).then(d => document.title = String(d.count))</script>'
+    )
+    page.wait_for_function("document.title === '1'")
+    assert call_count == 1
+
+    # ルートを解除
+    page.unroute("**/api/count", counting_handler)
+
+    # 解除後に別のルートでフォールバックを確認
+    page.route("**/api/count", lambda route: route.fulfill(
+        status=200,
+        content_type="application/json",
+        body=json.dumps({"count": "unrouted"}),
+    ))
+
+    page.set_content(
+        '<script>fetch("/api/count").then(r => r.json()).then(d => document.title = d.count)</script>'
+    )
+    page.wait_for_function("document.title === 'unrouted'")
+
+    # 元のハンドラーは呼ばれていない (カウントは 1 のまま)
+    assert call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# 9. コンテキストレベルのルーティング (context.route)
+# ---------------------------------------------------------------------------
+def test_context_route(context):
+    """コンテキストレベルでルートを設定し、複数ページに適用する"""
+
+    def mock_api(route):
+        route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({"source": "context-mock"}),
+        )
+
+    context.route("**/api/shared", mock_api)
+
+    # 同一コンテキストの複数ページで同じルートが有効
+    page1 = context.new_page()
+    page2 = context.new_page()
+
+    for idx, p in enumerate([page1, page2]):
+        p.set_content(
+            f'<script>fetch("/api/shared").then(r=>r.json()).then(d=>document.title=d.source)</script>'
+        )
+        p.wait_for_function("document.title === 'context-mock'")
+        assert p.title() == "context-mock", f"ページ {idx + 1} でモックが適用されなかった"
+
+    page1.close()
+    page2.close()
+
+
+# ---------------------------------------------------------------------------
+# 10. レスポンスボディの取得 (response.body, response.json, response.text)
+# ---------------------------------------------------------------------------
+def test_response_body(page):
+    """レスポンスボディをさまざまな形式で取得する"""
+
+    mock_data = {"items": [1, 2, 3], "total": 3}
+
+    page.route("**/api/items", lambda route: route.fulfill(
+        status=200,
+        content_type="application/json",
+        body=json.dumps(mock_data),
+    ))
+
+    with page.expect_response("**/api/items") as response_info:
+        page.set_content('<script>fetch("/api/items")</script>')
+
+    response = response_info.value
+
+    # バイナリとして取得
+    body_bytes = response.body()
+    assert isinstance(body_bytes, bytes)
+
+    # テキストとして取得
+    body_text = response.text()
+    assert "items" in body_text
+
+    # JSON として取得
+    body_json = response.json()
+    assert body_json["total"] == 3
+    assert body_json["items"] == [1, 2, 3]

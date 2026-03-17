@@ -1,0 +1,29 @@
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Playwright output
+output/screenshots/*.png
+output/screenshots/*.jpeg
+output/videos/*.webm
+output/traces/*.zip
+output/traces/*.har
+output/pdf/*.pdf
+
+# pytest
+.pytest_cache/
+test-results/
+
+# IDE
+.vscode/
+.idea/
+
+# Environment
+.env
+.venv/
+venv/
