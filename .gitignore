@@ -8,12 +8,8 @@ build/
 *.egg
 
 # Playwright output
-output/screenshots/*.png
-output/screenshots/*.jpeg
-output/videos/*.webm
-output/traces/*.zip
-output/traces/*.har
-output/pdf/*.pdf
+output/
+!output/.gitkeep
 
 # pytest
 .pytest_cache/

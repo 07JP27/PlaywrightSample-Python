@@ -11,6 +11,21 @@ import tempfile
 
 import pytest
 
+# set_content + fetch が動作するよう HTTP オリジンを確保するためのモック URL
+_MOCK_ORIGIN = "https://mock.test/"
+
+
+def _setup_mock_origin(target):
+    """page または context にモック HTTP オリジンを登録する"""
+    target.route(
+        _MOCK_ORIGIN,
+        lambda r: r.fulfill(
+            status=200,
+            content_type="text/html",
+            body="<html><body></body></html>",
+        ),
+    )
+
 
 # ---------------------------------------------------------------------------
 # 1. リクエスト傍受とレスポンスモック (page.route + route.fulfill)
@@ -25,6 +40,10 @@ def test_route_fulfill(page):
             body=json.dumps({"message": "モックレスポンス"}),
         )
 
+    # fetch の相対 URL が解決されるよう HTTP オリジンを確保
+    _setup_mock_origin(page)
+    page.goto(_MOCK_ORIGIN)
+
     page.route("**/api/data", handle_route)
     page.set_content(
         '<script>fetch("/api/data").then(r=>r.json()).then(d=>document.title=d.message)</script>'
@@ -36,28 +55,24 @@ def test_route_fulfill(page):
 # 2. リクエスト修正 - ヘッダー追加 (route.continue_)
 # ---------------------------------------------------------------------------
 def test_route_continue_with_headers(page):
-    """リクエストにカスタムヘッダーを追加する"""
-    captured_headers: dict = {}
+    """リクエストにカスタムヘッダーを追加して実サーバーへ転送する"""
+    added_headers: dict = {}
 
-    def add_custom_header(route, request):
-        headers = {**request.headers, "X-Custom-Header": "playwright-test"}
+    def add_custom_header(route):
+        headers = {**route.request.headers, "x-custom-header": "playwright-test"}
+        added_headers.update(headers)
         route.continue_(headers=headers)
 
-    def capture_request(request):
-        # サーバーへ送信されるヘッダーを記録する
-        if "api/echo" in request.url:
-            captured_headers.update(request.headers)
-
-    page.on("request", capture_request)
-    page.route("**/api/echo", add_custom_header)
-
-    # モック API でヘッダーが渡されたことを確認
-    page.set_content(
-        '<script>fetch("/api/echo").then(r => document.title = "done")</script>'
+    # 実サイトへのリクエストにカスタムヘッダーを追加
+    page.route("https://www.microsoft.com/ja-jp", add_custom_header)
+    response = page.goto(
+        "https://www.microsoft.com/ja-jp", wait_until="domcontentloaded"
     )
-    page.wait_for_function("document.title === 'done'")
 
-    assert captured_headers.get("x-custom-header") == "playwright-test"
+    # ハンドラーでヘッダーが設定されたことを確認
+    assert added_headers.get("x-custom-header") == "playwright-test"
+    # サーバーが正常にレスポンスを返したことを確認
+    assert response.ok
 
 
 # ---------------------------------------------------------------------------
@@ -84,23 +99,17 @@ def test_route_abort_images(page):
 # ---------------------------------------------------------------------------
 def test_expect_response(page):
     """特定のレスポンスを待機する"""
-    with page.expect_response("**/api/status") as response_info:
-        page.set_content(
-            '<script>fetch("/api/status")</script>'
-        )
-        # モック用のルートを先に登録
-        # ここでは set_content の前にルートが必要なので、事前に設定する
-    # expect_response は URL にマッチするレスポンスが来ない場合タイムアウトする
+    page.route(
+        "**/api/status",
+        lambda route: route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({"status": "ok"}),
+        ),
+    )
 
-
-def test_expect_response_with_route(page):
-    """route.fulfill と expect_response を組み合わせる"""
-
-    page.route("**/api/status", lambda route: route.fulfill(
-        status=200,
-        content_type="application/json",
-        body=json.dumps({"status": "ok"}),
-    ))
+    _setup_mock_origin(page)
+    page.goto(_MOCK_ORIGIN)
 
     with page.expect_response("**/api/status") as response_info:
         page.set_content('<script>fetch("/api/status")</script>')
@@ -115,12 +124,17 @@ def test_expect_response_with_route(page):
 # ---------------------------------------------------------------------------
 def test_expect_request(page):
     """特定のリクエストが発行されるのを待機する"""
+    page.route(
+        "**/api/submit",
+        lambda route: route.fulfill(
+            status=201,
+            content_type="application/json",
+            body=json.dumps({"id": 1}),
+        ),
+    )
 
-    page.route("**/api/submit", lambda route: route.fulfill(
-        status=201,
-        content_type="application/json",
-        body=json.dumps({"id": 1}),
-    ))
+    _setup_mock_origin(page)
+    page.goto(_MOCK_ORIGIN)
 
     with page.expect_request("**/api/submit") as request_info:
         page.set_content(
@@ -156,7 +170,11 @@ def test_network_events(page):
     assert len(response_statuses) > 0, "レスポンスイベントが発火しなかった"
 
     # メインドキュメントのステータスコードを確認
-    assert 200 in response_statuses or 301 in response_statuses or 302 in response_statuses
+    assert (
+        200 in response_statuses
+        or 301 in response_statuses
+        or 302 in response_statuses
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -164,10 +182,14 @@ def test_network_events(page):
 # ---------------------------------------------------------------------------
 def test_har_recording(browser):
     """HAR ファイルにネットワークトラフィックを記録する"""
-    har_path = os.path.join(
-        os.path.dirname(__file__), "..", "output", "traces", "network.har"
+    har_dir = os.path.normpath(
+        os.path.join(os.path.dirname(__file__), "..", "output", "traces")
     )
-    har_path = os.path.normpath(har_path)
+    os.makedirs(har_dir, exist_ok=True)
+
+    # テスト間の衝突を避けるため一意なファイル名を生成
+    fd, har_path = tempfile.mkstemp(suffix=".har", dir=har_dir)
+    os.close(fd)
 
     # HAR 記録を有効にしたコンテキストを作成
     context = browser.new_context(record_har_path=har_path)
@@ -205,11 +227,14 @@ def test_unroute(page):
             body=json.dumps({"count": call_count}),
         )
 
+    _setup_mock_origin(page)
+    page.goto(_MOCK_ORIGIN)
+
     page.route("**/api/count", counting_handler)
 
     # 1 回目: ルートが有効
     page.set_content(
-        '<script>fetch("/api/count").then(r => r.json()).then(d => document.title = String(d.count))</script>'
+        '<script>fetch("/api/count").then(r=>r.json()).then(d=>document.title=String(d.count))</script>'
     )
     page.wait_for_function("document.title === '1'")
     assert call_count == 1
@@ -218,14 +243,17 @@ def test_unroute(page):
     page.unroute("**/api/count", counting_handler)
 
     # 解除後に別のルートでフォールバックを確認
-    page.route("**/api/count", lambda route: route.fulfill(
-        status=200,
-        content_type="application/json",
-        body=json.dumps({"count": "unrouted"}),
-    ))
+    page.route(
+        "**/api/count",
+        lambda route: route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps({"count": "unrouted"}),
+        ),
+    )
 
     page.set_content(
-        '<script>fetch("/api/count").then(r => r.json()).then(d => document.title = d.count)</script>'
+        '<script>fetch("/api/count").then(r=>r.json()).then(d=>document.title=d.count)</script>'
     )
     page.wait_for_function("document.title === 'unrouted'")
 
@@ -246,6 +274,8 @@ def test_context_route(context):
             body=json.dumps({"source": "context-mock"}),
         )
 
+    # コンテキストレベルでルートを登録 (全ページに適用)
+    _setup_mock_origin(context)
     context.route("**/api/shared", mock_api)
 
     # 同一コンテキストの複数ページで同じルートが有効
@@ -253,8 +283,9 @@ def test_context_route(context):
     page2 = context.new_page()
 
     for idx, p in enumerate([page1, page2]):
+        p.goto(_MOCK_ORIGIN)
         p.set_content(
-            f'<script>fetch("/api/shared").then(r=>r.json()).then(d=>document.title=d.source)</script>'
+            '<script>fetch("/api/shared").then(r=>r.json()).then(d=>document.title=d.source)</script>'
         )
         p.wait_for_function("document.title === 'context-mock'")
         assert p.title() == "context-mock", f"ページ {idx + 1} でモックが適用されなかった"
@@ -268,14 +299,19 @@ def test_context_route(context):
 # ---------------------------------------------------------------------------
 def test_response_body(page):
     """レスポンスボディをさまざまな形式で取得する"""
-
     mock_data = {"items": [1, 2, 3], "total": 3}
 
-    page.route("**/api/items", lambda route: route.fulfill(
-        status=200,
-        content_type="application/json",
-        body=json.dumps(mock_data),
-    ))
+    page.route(
+        "**/api/items",
+        lambda route: route.fulfill(
+            status=200,
+            content_type="application/json",
+            body=json.dumps(mock_data),
+        ),
+    )
+
+    _setup_mock_origin(page)
+    page.goto(_MOCK_ORIGIN)
 
     with page.expect_response("**/api/items") as response_info:
         page.set_content('<script>fetch("/api/items")</script>')

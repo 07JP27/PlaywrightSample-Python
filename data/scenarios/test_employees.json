@@ -1,0 +1,24 @@
+{
+  "employees": [
+    {
+      "first_name": "田中",
+      "last_name": "太郎",
+      "email": "tanaka.taro@example.com",
+      "age": 35,
+      "salary": 50000,
+      "department": "Engineering",
+      "mobile": "09012345678",
+      "address": "東京都千代田区1-1-1"
+    },
+    {
+      "first_name": "佐藤",
+      "last_name": "花子",
+      "email": "sato.hanako@example.com",
+      "age": 28,
+      "salary": 45000,
+      "department": "Marketing",
+      "mobile": "09087654321",
+      "address": "大阪府大阪市中央区2-2-2"
+    }
+  ]
+}

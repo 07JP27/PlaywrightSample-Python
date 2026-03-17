@@ -1,7 +1,8 @@
 # Playwright Python 全機能サンプル
 
 Playwright for Python の全機能を網羅するサンプルプロジェクトです。  
-24 カテゴリ・**403 テスト関数**で Playwright の API を体系的に学べます。
+24 カテゴリ・**402 テスト関数**で Playwright の API を体系的に学べます。  
+さらに、JTC（日本の伝統的大企業）の業務システムを想定した **5 つの E2E シナリオテスト（34 テスト関数）** も収録しています。
 
 ## セットアップ
 
@@ -19,8 +20,14 @@ playwright install
 # 全テスト実行
 pytest
 
+# 機能別サンプルの実行
+pytest tests/features/
+
+# E2Eシナリオテストの実行
+pytest tests/scenarios/
+
 # 特定テストファイルの実行
-pytest tests/test_01_browser_launch.py
+pytest tests/features/test_01_browser_launch.py
 
 # ヘッドフルモード（ブラウザ表示）
 pytest --headed
@@ -58,9 +65,23 @@ pytest --base-url https://www.microsoft.com
 ├── conftest.py                       # 共通フィクスチャ・設定
 ├── pages/                            # Page Object Model
 │   ├── base_page.py                  # 基底ページクラス
-│   └── microsoft_page.py            # Microsoft サイト用 POM
-├── tests/                            # テストファイル（下記ガイド参照）
-├── data/                             # テストデータ
+│   ├── microsoft_page.py            # Microsoft サイト用 POM
+│   ├── saucedemo/                   # SauceDemo（EC）用 POM
+│   ├── orangehrm/                   # OrangeHRM（HR）用 POM
+│   ├── the_internet/                # The Internet 用 POM
+│   └── demoqa/                      # DemoQA 用 POM
+├── tests/
+│   ├── features/                    # 機能別サンプル（test_01〜24）
+│   └── scenarios/                   # E2E シナリオテスト
+│       ├── conftest.py              # シナリオ用フィクスチャ
+│       ├── test_e2e_ec_purchase.py   # EC 購買フロー
+│       ├── test_e2e_hr_management.py # HR 勤怠管理フロー
+│       ├── test_e2e_portal_auth.py   # ポータル認証フロー
+│       ├── test_e2e_application_form.py # 申請ワークフロー
+│       └── test_e2e_cross_system.py  # API+UI 複合シナリオ
+├── data/
+│   ├── upload_sample.txt            # アップロード用サンプル
+│   └── scenarios/                   # シナリオ用テストデータ
 └── output/                           # 出力先（スクリーンショット・動画等）
 ```
 
@@ -70,7 +91,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 1. ブラウザ起動・管理
 
-> 📄 [tests/test_01_browser_launch.py](tests/test_01_browser_launch.py) — 11 テスト  
+> 📄 [tests/features/test_01_browser_launch.py](tests/features/test_01_browser_launch.py) — 11 テスト  
 > 🔗 [公式ドキュメント: BrowserType](https://playwright.dev/python/docs/api/class-browsertype)
 
 「ブラウザをコードから起動したい」「headless / headed を切り替えたい」「Chrome や Edge の安定版を使いたい」ときに参照。Chromium / Firefox / WebKit の 3 エンジン起動、slow_mo、channel 指定、ブラウザ引数などを扱う。
@@ -95,7 +116,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 2. ブラウザコンテキスト
 
-> 📄 [tests/test_02_browser_context.py](tests/test_02_browser_context.py) — 14 テスト  
+> 📄 [tests/features/test_02_browser_context.py](tests/features/test_02_browser_context.py) — 14 テスト  
 > 🔗 [公式ドキュメント: BrowserContext](https://playwright.dev/python/docs/api/class-browsercontext)
 
 「複数ユーザーを同時にシミュレートしたい」「Cookie やストレージをテスト間で分離したい」「Proxy や Basic 認証を設定したい」ときに参照。コンテキストの作成・分離・Cookie 操作・パーミッション制御を扱う。
@@ -123,7 +144,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 3. ページ操作の基本
 
-> 📄 [tests/test_03_page_navigation.py](tests/test_03_page_navigation.py) — 21 テスト  
+> 📄 [tests/features/test_03_page_navigation.py](tests/features/test_03_page_navigation.py) — 21 テスト  
 > 🔗 [公式ドキュメント: Page](https://playwright.dev/python/docs/api/class-page)
 
 「ページ遷移したい」「戻る・進む・リロードしたい」「ページの読み込み完了を待ちたい」ときに参照。goto / go_back / reload / wait_for_load_state / wait_for_url / set_viewport_size など基本的なページ操作を扱う。
@@ -158,7 +179,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 4. ロケーター戦略
 
-> 📄 [tests/test_04_locators.py](tests/test_04_locators.py) — 32 テスト  
+> 📄 [tests/features/test_04_locators.py](tests/features/test_04_locators.py) — 32 テスト  
 > 🔗 [公式ドキュメント: Locators](https://playwright.dev/python/docs/locators)
 
 「ページ上の要素をどうやって見つけるか？」の全パターン集。get_by_role（推奨）/ get_by_text / get_by_label / get_by_test_id / CSS / XPath の使い分けと、filter・nth・チェーンによる絞り込みテクニックを扱う。
@@ -204,7 +225,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 5. ユーザーアクション・入力操作
 
-> 📄 [tests/test_05_actions.py](tests/test_05_actions.py) — 44 テスト  
+> 📄 [tests/features/test_05_actions.py](tests/features/test_05_actions.py) — 44 テスト  
 > 🔗 [公式ドキュメント: Actions](https://playwright.dev/python/docs/input)
 
 「フォームに入力したい」「ボタンをクリックしたい」「ドラッグ＆ドロップしたい」「キーボードショートカットを送りたい」ときに参照。fill / click / hover / check / select_option / drag_to / keyboard / mouse 等ブラウザ上のユーザー操作を全網羅。
@@ -239,7 +260,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 6. アサーション（expect）
 
-> 📄 [tests/test_06_assertions.py](tests/test_06_assertions.py) — 27 テスト  
+> 📄 [tests/features/test_06_assertions.py](tests/features/test_06_assertions.py) — 27 テスト  
 > 🔗 [公式ドキュメント: Assertions](https://playwright.dev/python/docs/test-assertions)
 
 「要素が表示されているか検証したい」「テキスト・属性・URL・タイトルを検証したい」ときに参照。expect() の全メソッド（to_be_visible / to_have_text / to_have_url 等 27 種）を網羅。自動リトライ付きでフレーキーテストを防ぐ。
@@ -275,7 +296,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 7. ネットワーク制御
 
-> 📄 [tests/test_07_network.py](tests/test_07_network.py) — 11 テスト  
+> 📄 [tests/features/test_07_network.py](tests/features/test_07_network.py) — 11 テスト  
 > 🔗 [公式ドキュメント: Network](https://playwright.dev/python/docs/network)
 
 「API レスポンスをモックしたい」「リクエストヘッダーを書き換えたい」「画像や広告をブロックしたい」「通信内容を HAR に記録したい」ときに参照。route / fulfill / continue_ / abort によるネットワークレベルの制御を扱う。
@@ -299,7 +320,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 8. WebSocket 制御
 
-> 📄 [tests/test_08_websocket.py](tests/test_08_websocket.py) — 4 テスト  
+> 📄 [tests/features/test_08_websocket.py](tests/features/test_08_websocket.py) — 4 テスト  
 > 🔗 [公式ドキュメント: WebSocketRoute](https://playwright.dev/python/docs/api/class-websocketroute)
 
 「WebSocket 通信をモックしたい」「リアルタイム通信のメッセージを傍受・検証したい」ときに参照。route_web_socket によるサーバーなしモック、framereceived / framesent イベント監視を扱う（v1.48+）。
@@ -317,7 +338,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 9. ファイル操作
 
-> 📄 [tests/test_09_file_operations.py](tests/test_09_file_operations.py) — 6 テスト  
+> 📄 [tests/features/test_09_file_operations.py](tests/features/test_09_file_operations.py) — 6 テスト  
 > 🔗 [公式ドキュメント: Downloads](https://playwright.dev/python/docs/downloads)
 
 「ファイルアップロードフォームをテストしたい」「ダウンロード処理を検証したい」ときに参照。set_input_files / expect_file_chooser によるアップロードと、expect_download によるダウンロード捕捉・保存を扱う。
@@ -337,7 +358,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 10. ダイアログ処理
 
-> 📄 [tests/test_10_dialogs.py](tests/test_10_dialogs.py) — 10 テスト  
+> 📄 [tests/features/test_10_dialogs.py](tests/features/test_10_dialogs.py) — 10 テスト  
 > 🔗 [公式ドキュメント: Dialogs](https://playwright.dev/python/docs/dialogs)
 
 「alert / confirm / prompt のダイアログを自動で処理したい」ときに参照。page.on("dialog") でハンドラーを登録し、accept / dismiss / テキスト入力を行う方法を扱う。ハンドラーはアクション実行前に登録が必要。
@@ -357,7 +378,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 11. マルチページ・タブ・ポップアップ
 
-> 📄 [tests/test_11_multi_page.py](tests/test_11_multi_page.py) — 9 テスト  
+> 📄 [tests/features/test_11_multi_page.py](tests/features/test_11_multi_page.py) — 9 テスト  
 > 🔗 [公式ドキュメント: Pages](https://playwright.dev/python/docs/pages)
 
 「target="_blank" で開く新しいタブを捕捉したい」「window.open のポップアップを制御したい」「開いている全タブを列挙したい」ときに参照。expect_popup / expect_page / bring_to_front などマルチタブ操作を扱う。
@@ -377,7 +398,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 12. Frame / iframe 操作
 
-> 📄 [tests/test_12_frames.py](tests/test_12_frames.py) — 14 テスト  
+> 📄 [tests/features/test_12_frames.py](tests/features/test_12_frames.py) — 14 テスト  
 > 🔗 [公式ドキュメント: Frames](https://playwright.dev/python/docs/frames)
 
 「iframe の中にある要素を操作したい」「ネストされた iframe を扱いたい」ときに参照。frame_locator（推奨）/ frame(name=) / frame(url=) による iframe 内要素のアクセスと操作を扱う。
@@ -397,7 +418,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 13. Shadow DOM
 
-> 📄 [tests/test_13_shadow_dom.py](tests/test_13_shadow_dom.py) — 13 テスト  
+> 📄 [tests/features/test_13_shadow_dom.py](tests/features/test_13_shadow_dom.py) — 13 テスト  
 > 🔗 [公式ドキュメント: Locators (Shadow DOM)](https://playwright.dev/python/docs/locators#locate-in-shadow-dom)
 
 「Web Components の Shadow DOM 内にある要素を操作したい」ときに参照。Playwright の locator は Shadow DOM を自動貫通（pierce）するため、通常と同じセレクタで操作できることを示す。
@@ -415,7 +436,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 14. エミュレーション
 
-> 📄 [tests/test_14_emulation.py](tests/test_14_emulation.py) — 34 テスト  
+> 📄 [tests/features/test_14_emulation.py](tests/features/test_14_emulation.py) — 34 テスト  
 > 🔗 [公式ドキュメント: Emulation](https://playwright.dev/python/docs/emulation)
 
 「iPhone や Android でどう見えるかテストしたい」「位置情報・言語・タイムゾーン・ダークモードを切り替えたい」ときに参照。p.devices によるデバイスプリセット、geolocation / locale / timezone_id / color_scheme / offline 等の環境エミュレーションを扱う。
@@ -440,7 +461,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 15. 認証・ストレージ状態
 
-> 📄 [tests/test_15_auth_storage.py](tests/test_15_auth_storage.py) — 12 テスト  
+> 📄 [tests/features/test_15_auth_storage.py](tests/features/test_15_auth_storage.py) — 12 テスト  
 > 🔗 [公式ドキュメント: Authentication](https://playwright.dev/python/docs/auth)
 
 「ログイン状態を保存して複数テストで再利用したい」「テストごとに異なるユーザーで実行したい」ときに参照。storage_state の保存・復元で認証フローを毎回スキップし、テスト実行を高速化する方法を扱う。
@@ -460,7 +481,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 16. スクリーンショット・動画・PDF
 
-> 📄 [tests/test_16_screenshots_video.py](tests/test_16_screenshots_video.py) — 8 テスト  
+> 📄 [tests/features/test_16_screenshots_video.py](tests/features/test_16_screenshots_video.py) — 8 テスト  
 > 🔗 [公式ドキュメント: Screenshots](https://playwright.dev/python/docs/screenshots)
 
 「テスト実行中のスクリーンショットを撮りたい」「テストを動画で録画したい」「ページを PDF に出力したい」ときに参照。ページ全体・要素・領域指定のスクリーンショット、動画記録、PDF 生成（Chromium + headless のみ）を扱う。
@@ -482,7 +503,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 17. トレーシング
 
-> 📄 [tests/test_17_tracing.py](tests/test_17_tracing.py) — 6 テスト  
+> 📄 [tests/features/test_17_tracing.py](tests/features/test_17_tracing.py) — 6 テスト  
 > 🔗 [公式ドキュメント: Trace Viewer](https://playwright.dev/python/docs/trace-viewer-intro)
 
 「テスト失敗の原因を詳しく調べたい」「操作の各ステップを後から再現したい」ときに参照。スクリーンショット・DOM スナップショット・ネットワークログを含むトレースを記録し、`playwright show-trace trace.zip` で可視化する方法を扱う。
@@ -501,7 +522,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 18. ビジュアルリグレッション
 
-> 📄 [tests/test_18_visual_regression.py](tests/test_18_visual_regression.py) — 7 テスト  
+> 📄 [tests/features/test_18_visual_regression.py](tests/features/test_18_visual_regression.py) — 7 テスト  
 > 🔗 [公式ドキュメント: Visual Comparisons](https://playwright.dev/python/docs/test-snapshots)
 
 「UI の見た目が意図せず変わっていないか検知したい」ときに参照。expect(page).to_have_screenshot() でベースライン画像と比較し、ピクセル差分を自動検出する。ベースライン更新は `pytest --update-snapshots`。
@@ -520,7 +541,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 19. Clock（時刻制御）
 
-> 📄 [tests/test_19_clock.py](tests/test_19_clock.py) — 9 テスト  
+> 📄 [tests/features/test_19_clock.py](tests/features/test_19_clock.py) — 9 テスト  
 > 🔗 [公式ドキュメント: Clock](https://playwright.dev/python/docs/clock)
 
 「setTimeout / setInterval / Date に依存する機能をテストしたい」「5秒待つ処理を即座に完了させたい」ときに参照。page.clock でフェイクタイマーをインストールし、時間の固定・早送り・一時停止を行う方法を扱う。
@@ -540,7 +561,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 20. API テスト
 
-> 📄 [tests/test_20_api_testing.py](tests/test_20_api_testing.py) — 23 テスト  
+> 📄 [tests/features/test_20_api_testing.py](tests/features/test_20_api_testing.py) — 23 テスト  
 > 🔗 [公式ドキュメント: API Testing](https://playwright.dev/python/docs/api-testing)
 
 「ブラウザを起動せずに REST API のエンドポイントをテストしたい」「E2E テスト内でバックエンドのデータを準備・検証したい」ときに参照。playwright.request による GET / POST / PUT / DELETE とレスポンス検証を扱う。
@@ -560,7 +581,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 21. アクセシビリティテスト
 
-> 📄 [tests/test_21_accessibility.py](tests/test_21_accessibility.py) — 25 テスト  
+> 📄 [tests/features/test_21_accessibility.py](tests/features/test_21_accessibility.py) — 25 テスト  
 > 🔗 [公式ドキュメント: Accessibility Testing](https://playwright.dev/python/docs/accessibility-testing)
 
 「Web アクセシビリティの品質を自動検証したい」「スクリーンリーダーにどう認識されるか確認したい」ときに参照。ARIA ロール・アクセシブル名・説明のアサーション、アクセシビリティスナップショット、キーボードナビゲーション確認を扱う。
@@ -580,7 +601,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 22. JavaScript 実行・評価
 
-> 📄 [tests/test_22_js_evaluation.py](tests/test_22_js_evaluation.py) — 25 テスト  
+> 📄 [tests/features/test_22_js_evaluation.py](tests/features/test_22_js_evaluation.py) — 25 テスト  
 > 🔗 [公式ドキュメント: Evaluating JavaScript](https://playwright.dev/python/docs/evaluating)
 
 「ページ内で JavaScript を実行して値を取得したい」「Python 関数をブラウザ側から呼び出したい」「console.log やエラーを捕捉したい」ときに参照。evaluate / expose_function / on("console") / add_init_script を扱う。
@@ -603,7 +624,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 23. 高度な接続・設定
 
-> 📄 [tests/test_23_advanced_config.py](tests/test_23_advanced_config.py) — 5 テスト  
+> 📄 [tests/features/test_23_advanced_config.py](tests/features/test_23_advanced_config.py) — 5 テスト  
 > 🔗 [公式ドキュメント: BrowserType](https://playwright.dev/python/docs/api/class-browsertype)
 
 「ユーザープロファイルを保持したままテストしたい」「既に起動している Chrome に接続したい」「DevTools Protocol で低レベル操作したい」ときに参照。launch_persistent_context / connect_over_cdp / CDPSession を扱う。
@@ -622,7 +643,7 @@ pytest --base-url https://www.microsoft.com
 
 ### 24. 非同期 API（async/await）
 
-> 📄 [tests/test_24_async_api.py](tests/test_24_async_api.py) — 33 テスト  
+> 📄 [tests/features/test_24_async_api.py](tests/features/test_24_async_api.py) — 33 テスト  
 > 🔗 [公式ドキュメント: Library (async)](https://playwright.dev/python/docs/library)
 
 「async/await で非同期にブラウザを操作したい」「イベントループベースのアプリと統合したい」ときに参照。同期 API（sync_api）と同等の操作を非同期 API（async_api）で記述した対比サンプル集。
@@ -635,5 +656,125 @@ pytest --base-url https://www.microsoft.com
 - 非同期でのネットワーク傍受
 - 非同期でのスクリーンショット
 - 非同期での JavaScript 評価
+
+</details>
+
+---
+
+## 🏢 E2E シナリオテストガイド
+
+JTC（日本の伝統的大企業）の業務システムを想定した、実践的な E2E テストシナリオ集です。  
+パブリックなデモサイトを使用し、Page Object Model パターンで構成されています。
+
+```bash
+# 全シナリオ実行
+pytest tests/scenarios/
+
+# 特定シナリオの実行
+pytest tests/scenarios/test_e2e_ec_purchase.py
+
+# ヘッドフルモードで実行（デバッグ向け）
+pytest tests/scenarios/ --headed --slowmo 500
+```
+
+### S1. EC 購買フロー
+
+> 📄 [tests/scenarios/test_e2e_ec_purchase.py](tests/scenarios/test_e2e_ec_purchase.py) — 8 テスト  
+> 🌐 対象サイト: [SauceDemo](https://www.saucedemo.com/)
+
+EC サイトでの購買業務フロー。ログイン → 商品閲覧・ソート → カート追加 → チェックアウト → 注文完了。異常系（ロックアウトユーザー、バリデーションエラー）も網羅。
+
+<details><summary>テスト一覧</summary>
+
+- ログイン → 商品一覧表示確認
+- 商品ソート（価格安い順・高い順）
+- 複数商品カート追加
+- カートから商品削除
+- **購買フロー完走（メインシナリオ）**
+- チェックアウトバリデーションエラー
+- ロックアウトユーザーの拒否
+- カートから買い物続行
+
+</details>
+
+---
+
+### S2. HR 勤怠管理フロー
+
+> 📄 [tests/scenarios/test_e2e_hr_management.py](tests/scenarios/test_e2e_hr_management.py) — 6 テスト  
+> 🌐 対象サイト: [OrangeHRM Demo](https://opensource-demo.orangehrmlive.com/)
+
+人事管理システムでの日常業務。管理者ログイン → ダッシュボード確認 → PIM（従業員管理）遷移 → 従業員検索 → メニュー遷移 → ログアウト。
+
+<details><summary>テスト一覧</summary>
+
+- 管理者ログイン → ダッシュボード表示確認
+- PIM（人事管理）モジュールへの遷移
+- 従業員検索
+- サイドメニュー各項目への遷移確認
+- ログイン → ログアウト → 再ログイン
+- 不正ログイン試行
+
+</details>
+
+---
+
+### S3. ポータル認証・フォーム操作フロー
+
+> 📄 [tests/scenarios/test_e2e_portal_auth.py](tests/scenarios/test_e2e_portal_auth.py) — 7 テスト  
+> 🌐 対象サイト: [The Internet](https://the-internet.herokuapp.com/)
+
+社内ポータルの認証フローとフォーム操作。ログイン/ログアウト → チェックボックス → ドロップダウン → ファイルアップロード。
+
+<details><summary>テスト一覧</summary>
+
+- 正常ログイン
+- ログイン失敗
+- ログイン → ログアウト → 再ログイン
+- チェックボックス操作
+- ドロップダウン選択
+- ファイルアップロード
+- **統合ポータルワークフロー（メインシナリオ）**
+
+</details>
+
+---
+
+### S4. 申請ワークフロー
+
+> 📄 [tests/scenarios/test_e2e_application_form.py](tests/scenarios/test_e2e_application_form.py) — 7 テスト  
+> 🌐 対象サイト: [DemoQA](https://demoqa.com/)
+
+申請書フォーム入力と管理テーブル操作。フォーム送信 → バリデーション確認 → テーブル CRUD（追加・検索・編集・削除）。
+
+<details><summary>テスト一覧</summary>
+
+- 申請フォーム送信
+- 必須フィールドバリデーション
+- テーブルへのレコード追加
+- テーブル検索
+- テーブルレコード編集
+- テーブルレコード削除
+- **統合申請ワークフロー（メインシナリオ）**
+
+</details>
+
+---
+
+### S5. API + UI 複合シナリオ
+
+> 📄 [tests/scenarios/test_e2e_cross_system.py](tests/scenarios/test_e2e_cross_system.py) — 6 テスト  
+> 🌐 対象サイト: [httpbin.org](https://httpbin.org/) + [SauceDemo](https://www.saucedemo.com/)
+
+システム間連携パターン。API でのデータ準備/検証と UI 操作を組み合わせた統合テスト。承認ワークフローの模擬も含む。
+
+<details><summary>テスト一覧</summary>
+
+- API 疎通確認 → UI 操作
+- API データ準備 → UI 検証
+- API 承認ワークフロー模擬
+- API/UI 並行操作
+- API レスポンスヘッダー検証
+- **エンドツーエンド統合テスト（メインシナリオ）**
 
 </details>
