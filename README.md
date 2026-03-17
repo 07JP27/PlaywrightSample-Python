@@ -85,6 +85,18 @@ pytest --base-url https://www.microsoft.com
 └── output/                           # 出力先（スクリーンショット・動画等）
 ```
 
+### テストの種類
+
+本プロジェクトには 2 種類のテストがあります。
+
+| | 機能別サンプル (`tests/features/`) | E2E シナリオ (`tests/scenarios/`) |
+|---|---|---|
+| **目的** | Playwright API の各機能を個別に学ぶ | 実際の業務フローを通しで検証する |
+| **テスト数** | 402 テスト（24 ファイル） | 34 テスト（5 ファイル） |
+| **対象** | ブラウザ操作・ロケーター・アサーション等 | EC購買・HR管理・認証・申請・API連携 |
+| **パターン** | 単機能デモ（`set_content` やシンプルな外部サイト） | Page Object Model + テストデータ駆動 |
+| **エビデンス** | なし | 全画面スクリーンショット + HTMLレポート自動生成 |
+
 ---
 
 ## 📖 機能別サンプルガイド
@@ -698,14 +710,14 @@ EC サイトでの購買業務フロー。ログイン → 商品閲覧・ソー
 
 <details><summary>テスト一覧</summary>
 
-- ログイン → 商品一覧表示確認
-- 商品ソート（価格安い順・高い順）
-- 複数商品カート追加
-- カートから商品削除
-- **購買フロー完走（メインシナリオ）**
-- チェックアウトバリデーションエラー
-- ロックアウトユーザーの拒否
-- カートから買い物続行
+- `test_login_and_view_products` — ログイン → 商品一覧表示確認
+- `test_sort_products_by_price` — 商品ソート（価格安い順・高い順）
+- `test_add_multiple_products_to_cart` — 複数商品カート追加
+- `test_remove_product_from_cart` — カートから商品削除
+- `test_complete_purchase_flow` — **購買フロー完走（メインシナリオ）**
+- `test_checkout_validation_error` — チェックアウトバリデーションエラー
+- `test_locked_out_user_cannot_login` — ロックアウトユーザーの拒否
+- `test_continue_shopping_from_cart` — カートから買い物続行
 
 </details>
 
@@ -720,12 +732,12 @@ EC サイトでの購買業務フロー。ログイン → 商品閲覧・ソー
 
 <details><summary>テスト一覧</summary>
 
-- 管理者ログイン → ダッシュボード表示確認
-- PIM（人事管理）モジュールへの遷移
-- 従業員検索
-- サイドメニュー各項目への遷移確認
-- ログイン → ログアウト → 再ログイン
-- 不正ログイン試行
+- `test_admin_login_and_dashboard` — 管理者ログイン → ダッシュボード表示確認
+- `test_navigate_to_pim_module` — PIM（人事管理）モジュールへの遷移
+- `test_search_employee` — 従業員検索
+- `test_dashboard_menu_navigation` — サイドメニュー各項目への遷移確認
+- `test_login_logout_cycle` — ログイン → ログアウト → 再ログイン
+- `test_invalid_login_attempt` — 不正ログイン試行
 
 </details>
 
@@ -740,13 +752,13 @@ EC サイトでの購買業務フロー。ログイン → 商品閲覧・ソー
 
 <details><summary>テスト一覧</summary>
 
-- 正常ログイン
-- ログイン失敗
-- ログイン → ログアウト → 再ログイン
-- チェックボックス操作
-- ドロップダウン選択
-- ファイルアップロード
-- **統合ポータルワークフロー（メインシナリオ）**
+- `test_login_success` — 正常ログイン
+- `test_login_failure` — ログイン失敗
+- `test_login_logout_relogin_cycle` — ログイン → ログアウト → 再ログイン
+- `test_checkbox_operations` — チェックボックス操作
+- `test_dropdown_selection` — ドロップダウン選択
+- `test_file_upload` — ファイルアップロード
+- `test_complete_portal_workflow` — **統合ポータルワークフロー（メインシナリオ）**
 
 </details>
 
@@ -761,13 +773,13 @@ EC サイトでの購買業務フロー。ログイン → 商品閲覧・ソー
 
 <details><summary>テスト一覧</summary>
 
-- 申請フォーム送信
-- 必須フィールドバリデーション
-- テーブルへのレコード追加
-- テーブル検索
-- テーブルレコード編集
-- テーブルレコード削除
-- **統合申請ワークフロー（メインシナリオ）**
+- `test_submit_practice_form` — 申請フォーム送信
+- `test_form_required_fields_validation` — 必須フィールドバリデーション
+- `test_web_table_add_record` — テーブルへのレコード追加
+- `test_web_table_search` — テーブル検索
+- `test_web_table_edit_record` — テーブルレコード編集
+- `test_web_table_delete_record` — テーブルレコード削除
+- `test_complete_application_workflow` — **統合申請ワークフロー（メインシナリオ）**
 
 </details>
 
@@ -782,11 +794,11 @@ EC サイトでの購買業務フロー。ログイン → 商品閲覧・ソー
 
 <details><summary>テスト一覧</summary>
 
-- API 疎通確認 → UI 操作
-- API データ準備 → UI 検証
-- API 承認ワークフロー模擬
-- API/UI 並行操作
-- API レスポンスヘッダー検証
-- **エンドツーエンド統合テスト（メインシナリオ）**
+- `test_api_health_check_then_ui_flow` — API 疎通確認 → UI 操作
+- `test_api_data_preparation_for_ui_verification` — API データ準備 → UI 検証
+- `test_api_mock_workflow_approval` — API 承認ワークフロー模擬
+- `test_parallel_api_and_ui_operations` — API/UI 並行操作
+- `test_api_response_headers_verification` — API レスポンスヘッダー検証
+- `test_end_to_end_with_api_validation` — **エンドツーエンド統合テスト（メインシナリオ）**
 
 </details>
