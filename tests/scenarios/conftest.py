@@ -196,6 +196,7 @@ def _generate_report_html(
         "portal_auth": "ポータル認証・フォーム操作フロー",
         "application_form": "申請ワークフロー",
         "cross_system": "API + UI 複合シナリオ",
+        "google_search": "Google 検索フロー",
     }
     label = SCENARIO_LABELS.get(scenario_name, scenario_name)
 

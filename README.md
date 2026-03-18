@@ -2,7 +2,7 @@
 
 Playwright for Python の全機能を網羅するサンプルプロジェクトです。  
 24 カテゴリ・**402 テスト関数**で Playwright の API を体系的に学べます。  
-さらに、業務システムを想定した **5 つの E2E シナリオテスト（34 テスト関数）** も収録しています。
+さらに、業務システムを想定した **6 つの E2E シナリオテスト（37 テスト関数）** も収録しています。
 
 ## セットアップ
 
@@ -69,7 +69,8 @@ pytest --base-url https://www.microsoft.com
 │   ├── saucedemo/                   # SauceDemo（EC）用 POM
 │   ├── orangehrm/                   # OrangeHRM（HR）用 POM
 │   ├── the_internet/                # The Internet 用 POM
-│   └── demoqa/                      # DemoQA 用 POM
+│   ├── demoqa/                      # DemoQA 用 POM
+│   └── google/                      # Google 検索用 POM
 ├── tests/
 │   ├── features/                    # 機能別サンプル（test_01〜24）
 │   └── scenarios/                   # E2E シナリオテスト
@@ -78,7 +79,8 @@ pytest --base-url https://www.microsoft.com
 │       ├── test_e2e_hr_management.py # HR 勤怠管理フロー
 │       ├── test_e2e_portal_auth.py   # ポータル認証フロー
 │       ├── test_e2e_application_form.py # 申請ワークフロー
-│       └── test_e2e_cross_system.py  # API+UI 複合シナリオ
+│       ├── test_e2e_cross_system.py  # API+UI 複合シナリオ
+│       └── test_e2e_google_search.py # Google 検索フロー
 ├── data/
 │   ├── upload_sample.txt            # アップロード用サンプル
 │   └── scenarios/                   # シナリオ用テストデータ
@@ -92,7 +94,7 @@ pytest --base-url https://www.microsoft.com
 | | 機能別サンプル (`tests/features/`) | E2E シナリオ (`tests/scenarios/`) |
 |---|---|---|
 | **目的** | Playwright API の各機能を個別に学ぶ | 実際の業務フローを通しで検証する |
-| **テスト数** | 402 テスト（24 ファイル） | 34 テスト（5 ファイル） |
+| **テスト数** | 402 テスト（24 ファイル） | 37 テスト（6 ファイル） |
 | **対象** | ブラウザ操作・ロケーター・アサーション等 | EC購買・HR管理・認証・申請・API連携 |
 | **パターン** | 単機能デモ（`set_content` やシンプルな外部サイト） | Page Object Model + テストデータ駆動 |
 | **エビデンス** | なし | 全画面スクリーンショット + HTMLレポート自動生成 |
@@ -800,5 +802,24 @@ EC サイトでの購買業務フロー。ログイン → 商品閲覧・ソー
 - `test_parallel_api_and_ui_operations` — API/UI 並行操作
 - `test_api_response_headers_verification` — API レスポンスヘッダー検証
 - `test_end_to_end_with_api_validation` — **エンドツーエンド統合テスト（メインシナリオ）**
+
+</details>
+
+---
+
+### S6. Google 検索フロー
+
+> 📄 [tests/scenarios/test_e2e_google_search.py](tests/scenarios/test_e2e_google_search.py) — 3 テスト  
+> 🌐 対象サイト: [Google](https://www.google.com/)
+
+シンプルな検索シナリオ。Google トップページにアクセス → 「microsoft」を検索 → 結果の表示確認。各ステップでエビデンスを取得する。
+
+> ⚠️ Google は bot 検知が厳しいため `--headed` モードでの実行を推奨
+
+<details><summary>テスト一覧</summary>
+
+- `test_google_page_title` — Google トップページのタイトル確認
+- `test_search_microsoft_and_view_results` — **Microsoft 検索→結果確認（メインシナリオ）**
+- `test_search_box_is_visible` — 検索ボックスの表示確認
 
 </details>
