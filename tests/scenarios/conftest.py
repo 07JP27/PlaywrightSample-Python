@@ -66,6 +66,7 @@ class Evidence:
 
 # セッション中の全テストのエビデンスを収集
 _all_evidence: list[dict] = []
+_session_id: str = ""
 
 
 # ============================================================
@@ -113,6 +114,10 @@ def evidence(request, page: Page):
     連番付きスクリーンショットが自動保存される。
     テスト終了時に結果を全体レポート用に収集する。
     """
+    global _session_id
+    if not _session_id:
+        _session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+
     test_name = request.node.name
     # ブラウザパラメータを除去（例: test_xxx[chromium] → test_xxx）
     if "[" in test_name:
@@ -121,7 +126,7 @@ def evidence(request, page: Page):
     if request.node.cls:
         test_name = f"{request.node.cls.__name__}__{test_name}"
 
-    evidence_dir = OUTPUT_DIR / "evidence"
+    evidence_dir = OUTPUT_DIR / "evidence" / _session_id
     ev = Evidence(test_name, evidence_dir, page)
 
     yield ev
@@ -144,9 +149,10 @@ def pytest_sessionfinish(session, exitstatus):
     if not _all_evidence:
         return
 
-    report_dir = OUTPUT_DIR / "evidence"
+    report_dir = OUTPUT_DIR / "evidence" / _session_id
     report_dir.mkdir(parents=True, exist_ok=True)
-    report_path = report_dir / "evidence_report.html"
+    report_filename = f"evidence_report_{_session_id}.html"
+    report_path = report_dir / report_filename
 
     timestamp = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
 
@@ -254,5 +260,13 @@ def pytest_sessionfinish(session, exitstatus):
     html_parts.append("</body></html>")
 
     report_path.write_text("\n".join(html_parts), encoding="utf-8")
+
+    # 最新レポートへのシンボリックリンクを作成
+    latest_link = OUTPUT_DIR / "evidence" / "latest"
+    if latest_link.is_symlink() or latest_link.exists():
+        latest_link.unlink()
+    latest_link.symlink_to(_session_id)
+
     print(f"\n📋 エビデンスレポート生成完了: {report_path}")
+    print(f"   最新レポート: {latest_link / report_filename}")
 
