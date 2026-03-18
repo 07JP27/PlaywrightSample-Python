@@ -66,7 +66,7 @@ class DemoQAFormPage(BasePage):
     def select_gender(self, gender: str):
         """性別を選択（Male / Female / Other）"""
         # ラジオボタンは隠れているため、ラベルをクリック
-        self.page.locator(f"label:has-text('{gender}')").click()
+        self.page.locator(f"#genterWrapper label:text-is('{gender}')").click()
 
     def fill_mobile(self, number: str):
         """携帯番号を入力"""

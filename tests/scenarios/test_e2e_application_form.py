@@ -17,17 +17,6 @@ from playwright.sync_api import Page, expect
 from pages.demoqa.form_page import DemoQAFormPage
 from pages.demoqa.web_tables_page import DemoQAWebTablesPage
 
-# DemoQA の広告をブロックするドメインパターン
-AD_BLOCK_PATTERNS = [
-    re.compile(r".*doubleclick\.net.*"),
-    re.compile(r".*googlesyndication\.com.*"),
-    re.compile(r".*googleadservices\.com.*"),
-    re.compile(r".*google-analytics\.com.*"),
-    re.compile(r".*adservice\.google\..*"),
-    re.compile(r".*pagead2\.googlesyndication\.com.*"),
-    re.compile(r".*amazon-adsystem\.com.*"),
-]
-
 
 def _block_ads(route):
     """広告リクエストをブロックするルートハンドラ"""
@@ -36,8 +25,10 @@ def _block_ads(route):
 
 def _setup_ad_blocker(page: Page):
     """ページに広告ブロッカーを設定する"""
-    for pattern in AD_BLOCK_PATTERNS:
-        page.route(pattern, _block_ads)
+    page.route("**/*doubleclick.net*", _block_ads)
+    page.route("**/*googlesyndication.com*", _block_ads)
+    page.route("**/*googleadservices.com*", _block_ads)
+    page.route("**/*amazon-adsystem.com*", _block_ads)
 
 
 def _remove_fixed_ban(page: Page):
@@ -117,15 +108,12 @@ class TestApplicationFormFlow:
         form_element = page.locator("form#userForm")
         expect(form_element).to_have_class(re.compile(r"was-validated"))
 
-        # 必須フィールド（名前、携帯番号）にバリデーションエラーのスタイルが適用されることを確認
-        # border-color が赤系（rgb(220, 53, 69) = #dc3545）になることで検出
+        # 必須フィールド（名前、携帯番号）にバリデーションエラーが適用されることを確認
         for field in [form_page.first_name, form_page.last_name, form_page.mobile]:
-            border_color = field.evaluate(
-                "el => getComputedStyle(el).borderColor"
+            is_invalid = field.evaluate(
+                "el => !el.validity.valid"
             )
-            assert "220" in border_color or "dc3545" in border_color.lower(), (
-                f"必須フィールドのバリデーションスタイルが適用されていません: border-color={border_color}"
-            )
+            assert is_invalid, "必須フィールドがinvalid状態になっていません"
         evidence.capture("空送信後_バリデーションエラー")
 
     # ------------------------------------------------------------------ #

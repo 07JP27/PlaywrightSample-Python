@@ -4,8 +4,6 @@ web_tables_page.py - DemoQA Web Tables ページ用 Page Object Model
 DemoQA (https://demoqa.com/webtables) の
 Webテーブル操作（追加・検索・編集・削除）を行うページオブジェクトクラス。
 """
-from typing import Optional
-
 from playwright.sync_api import Page
 
 from pages.base_page import BasePage
@@ -21,7 +19,7 @@ class DemoQAWebTablesPage(BasePage):
         # テーブル操作のロケーター
         self.add_button = page.locator("#addNewRecordButton")
         self.search_box = page.locator("#searchBox")
-        self.table_rows = page.locator(".rt-tr-group")
+        self.data_rows = page.locator("table tbody tr")
 
         # 登録フォームのロケーター
         self.form_first_name = page.locator("#firstName")
@@ -60,22 +58,14 @@ class DemoQAWebTablesPage(BasePage):
         self.search_box.fill(query)
 
     def get_row_count(self) -> int:
-        """データが存在する行数を取得（空行を除く）"""
-        count = 0
-        for i in range(self.table_rows.count()):
-            row = self.table_rows.nth(i)
-            # 空行はrt-tr内のセルが空文字
-            cells = row.locator(".rt-td")
-            if cells.count() > 0 and cells.first.inner_text().strip():
-                count += 1
-        return count
+        """データが存在する行数を取得"""
+        return self.data_rows.count()
 
     def edit_record(self, row_index: int, **fields):
         """指定行のレコードを編集（キーワード引数で更新フィールドを指定）"""
-        edit_button = self.table_rows.nth(row_index).locator("[title='Edit']")
+        edit_button = self.data_rows.nth(row_index).locator("[title='Edit']")
         edit_button.click()
 
-        # フィールド名とロケーターのマッピング
         field_map = {
             "first_name": self.form_first_name,
             "last_name": self.form_last_name,
@@ -94,7 +84,7 @@ class DemoQAWebTablesPage(BasePage):
 
     def delete_record(self, row_index: int):
         """指定行のレコードを削除"""
-        delete_button = self.table_rows.nth(row_index).locator("[title='Delete']")
+        delete_button = self.data_rows.nth(row_index).locator("[title='Delete']")
         delete_button.click()
 
     def get_table_data(self) -> list[dict]:
@@ -102,11 +92,10 @@ class DemoQAWebTablesPage(BasePage):
         headers = ["First Name", "Last Name", "Age", "Email", "Salary", "Department"]
         data = []
 
-        for i in range(self.table_rows.count()):
-            row = self.table_rows.nth(i)
-            cells = row.locator(".rt-td")
-            # 空行をスキップ
-            if cells.count() == 0 or not cells.first.inner_text().strip():
+        for i in range(self.data_rows.count()):
+            row = self.data_rows.nth(i)
+            cells = row.locator("td")
+            if cells.count() < len(headers):
                 continue
             row_data = {}
             for j, header in enumerate(headers):
