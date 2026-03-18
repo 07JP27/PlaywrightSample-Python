@@ -3,17 +3,52 @@ conftest.py - E2Eシナリオテスト用フィクスチャ
 
 シナリオテスト共通の設定・データロード・ヘルパーを提供する。
 エビデンス記録（全画面スクリーンショット＋HTMLレポート）機能を含む。
+
+Playwright のライフサイクル（起動・終了）はこのモジュールのフィクスチャで
+自己管理しており、pytest-playwright には依存しない。
 """
 import json
 from datetime import datetime
 from pathlib import Path
 
 import pytest
-from playwright.sync_api import Page
+from playwright.sync_api import Page, sync_playwright
 
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data" / "scenarios"
 OUTPUT_DIR = Path(__file__).resolve().parent.parent.parent / "output"
+
+
+# ============================================================
+# Playwright ライフサイクルフィクスチャ
+# ============================================================
+
+@pytest.fixture(scope="module")
+def browser():
+    """Playwright ブラウザの起動と終了を管理"""
+    pw = sync_playwright().start()
+    browser = pw.chromium.launch(headless=True)
+    yield browser
+    browser.close()
+    pw.stop()
+
+@pytest.fixture
+def context(browser):
+    """各テスト用のブラウザコンテキストを作成"""
+    context = browser.new_context(
+        viewport={"width": 1280, "height": 720},
+        locale="ja-JP",
+        timezone_id="Asia/Tokyo",
+    )
+    yield context
+    context.close()
+
+@pytest.fixture
+def page(context):
+    """各テスト用のページを作成"""
+    page = context.new_page()
+    yield page
+    page.close()
 
 
 # ============================================================

@@ -13,19 +13,22 @@ Google（https://www.google.com/）を対象とした
       headed モード（--headed）での実行を推奨。
 """
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page, expect, sync_playwright
 
 from pages.google.search_page import GoogleSearchPage
 
 
-@pytest.fixture(scope="session")
-def browser_type_launch_args(browser_type_launch_args):
-    """Google bot 検知を回避するためのブラウザ起動引数"""
-    args = browser_type_launch_args.get("args", [])
-    return {
-        **browser_type_launch_args,
-        "args": [*args, "--disable-blink-features=AutomationControlled"],
-    }
+@pytest.fixture(scope="module")
+def browser():
+    """Google bot 検知を回避するための起動引数付きブラウザ"""
+    pw = sync_playwright().start()
+    browser = pw.chromium.launch(
+        headless=True,
+        args=["--disable-blink-features=AutomationControlled"],
+    )
+    yield browser
+    browser.close()
+    pw.stop()
 
 
 @pytest.mark.slow

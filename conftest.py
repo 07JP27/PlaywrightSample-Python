@@ -1,31 +1,13 @@
 """
-conftest.py - Playwright テスト共通フィクスチャ・設定
+conftest.py - Playwright テスト共通設定
 
-pytest-playwright プラグインが提供する標準フィクスチャ:
-  - playwright: Playwright インスタンス
-  - browser: Browser インスタンス
-  - context: BrowserContext インスタンス
-  - page: Page インスタンス
+各テストファイルで Playwright のライフサイクルを明示的に管理する。
+pytest-playwright プラグインは使用せず、純粋な Playwright API を直接使用する。
+
+標準的なライフサイクルパターン:
+  1. sync_playwright().start() で Playwright を起動
+  2. playwright.chromium.launch() でブラウザを起動
+  3. browser.new_context() でコンテキストを作成
+  4. context.new_page() でページを作成
+  5. テスト実行後、逆順でクリーンアップ
 """
-import pytest
-
-
-@pytest.fixture(scope="session")
-def browser_context_args(browser_context_args):
-    """ブラウザコンテキストのデフォルト設定をカスタマイズ"""
-    return {
-        **browser_context_args,
-        "viewport": {"width": 1280, "height": 720},
-        "locale": "ja-JP",
-        "timezone_id": "Asia/Tokyo",
-    }
-
-
-@pytest.fixture(scope="session")
-def browser_type_launch_args(browser_type_launch_args):
-    """ブラウザ起動時のデフォルト引数をカスタマイズ"""
-    return {
-        **browser_type_launch_args,
-        # slow_mo を有効にする場合はコメント解除
-        # "slow_mo": 100,
-    }

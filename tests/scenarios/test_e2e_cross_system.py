@@ -11,7 +11,7 @@ UIフロントエンドとして SauceDemo を使用する。
 import json
 
 import pytest
-from playwright.sync_api import Playwright, Page
+from playwright.sync_api import Page, sync_playwright
 
 from pages.saucedemo.login_page import SauceDemoLoginPage
 from pages.saucedemo.inventory_page import SauceDemoInventoryPage
@@ -23,11 +23,13 @@ HTTPBIN_BASE_URL = "https://httpbin.org"
 
 
 @pytest.fixture
-def api_context(playwright: Playwright):
+def api_context():
     """httpbin.org 向け APIリクエストコンテキストを生成・破棄"""
-    context = playwright.request.new_context(base_url=HTTPBIN_BASE_URL)
+    pw = sync_playwright().start()
+    context = pw.request.new_context(base_url=HTTPBIN_BASE_URL)
     yield context
     context.dispose()
+    pw.stop()
 
 
 @pytest.fixture

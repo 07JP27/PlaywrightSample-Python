@@ -7,7 +7,38 @@ Web アクセシビリティに関するテスト手法を示す。
 
 import re
 
-from playwright.sync_api import Page, expect
+import pytest
+from playwright.sync_api import Page, expect, sync_playwright
+
+
+@pytest.fixture(scope="module")
+def browser():
+    """Playwright ブラウザの起動と終了を管理"""
+    pw = sync_playwright().start()
+    browser = pw.chromium.launch(headless=True)
+    yield browser
+    browser.close()
+    pw.stop()
+
+
+@pytest.fixture
+def context(browser):
+    """各テスト用のブラウザコンテキストを作成"""
+    context = browser.new_context(
+        viewport={"width": 1280, "height": 720},
+        locale="ja-JP",
+        timezone_id="Asia/Tokyo",
+    )
+    yield context
+    context.close()
+
+
+@pytest.fixture
+def page(context):
+    """各テスト用のページを作成"""
+    page = context.new_page()
+    yield page
+    page.close()
 
 
 # ============================================================
