@@ -5,9 +5,19 @@ test_23_advanced_config.py - 高度な接続・設定のサンプル
 CDPSession を使った低レベル操作など、高度な設定を示す。
 """
 
-import pytest
+import sys
 import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import sync_playwright
+
+from runner import TestRunner
+
+SKIP_TESTS = {
+    "test_connect_over_cdp": "CDP 接続は外部ブラウザが必要（デモ用コード）",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -38,7 +48,6 @@ def test_persistent_context():
 # ---------------------------------------------------------------------------
 # 2. CDP 接続 (connect_over_cdp) - 外部ブラウザが必要なため skip
 # ---------------------------------------------------------------------------
-@pytest.mark.skip(reason="CDP 接続は外部ブラウザが必要（デモ用コード）")
 def test_connect_over_cdp():
     """CDP 接続 - 既存の Chrome ブラウザに接続
 
@@ -161,3 +170,21 @@ def test_browser_launch_options():
             assert "Microsoft" in page.title()
 
             browser.close()
+
+
+def main():
+    runner = TestRunner("test_23_advanced_config")
+    all_tests = [
+        test_persistent_context,
+        test_connect_over_cdp,
+        test_cdp_session_performance_metrics,
+        test_cdp_network_emulation_slow3g,
+        test_browser_launch_options,
+    ]
+    for t in all_tests:
+        runner.run(t, skip_reason=SKIP_TESTS.get(t.__name__))
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

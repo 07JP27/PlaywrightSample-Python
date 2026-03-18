@@ -3,41 +3,15 @@ test_03_page_navigation.py - ページ操作の基本サンプル
 
 ページのナビゲーション、待機、プロパティ取得など
 基本的なページ操作を示す。
-
-Playwright のライフサイクルはテストファイル内のフィクスチャで自己管理する。
 """
 import re
+import sys
+from pathlib import Path
 
-import pytest
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import sync_playwright
-
-
-@pytest.fixture(scope="module")
-def browser():
-    """Playwright ブラウザの起動と終了を管理"""
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(headless=True)
-    yield browser
-    browser.close()
-    pw.stop()
-
-@pytest.fixture
-def context(browser):
-    """各テスト用のブラウザコンテキストを作成"""
-    context = browser.new_context(
-        viewport={"width": 1280, "height": 720},
-        locale="ja-JP",
-        timezone_id="Asia/Tokyo",
-    )
-    yield context
-    context.close()
-
-@pytest.fixture
-def page(context):
-    """各テスト用のページを作成"""
-    page = context.new_page()
-    yield page
-    page.close()
+from runner import TestRunner
 
 
 # ---------------------------------------------------------------------------
@@ -320,3 +294,62 @@ def test_page_close_multiple_pages(context):
     # page2 も閉じる
     page2.close()
     assert page2.is_closed() is True
+
+
+def main():
+    runner = TestRunner("test_03_page_navigation")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+
+        # Tests that use page
+        page_tests = [
+            test_goto_basic,
+            test_goto_with_wait_until,
+            test_goto_with_timeout,
+            test_page_title,
+            test_page_url,
+            test_page_content,
+            test_go_back_and_forward,
+            test_go_back_returns_response,
+            test_reload,
+            test_reload_with_wait_until,
+            test_wait_for_load_state_load,
+            test_wait_for_load_state_domcontentloaded,
+            test_wait_for_load_state_networkidle,
+            test_wait_for_url_string,
+            test_wait_for_url_pattern,
+            test_wait_for_url_after_navigation,
+            test_set_viewport_size,
+            test_set_viewport_size_mobile,
+            test_set_viewport_size_tablet,
+        ]
+        for test_func in page_tests:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+            runner.run(test_func, page)
+            context.close()
+
+        # Tests that use context
+        context_tests = [
+            test_page_close,
+            test_page_close_multiple_pages,
+        ]
+        for test_func in context_tests:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            runner.run(test_func, context)
+            context.close()
+
+        browser.close()
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

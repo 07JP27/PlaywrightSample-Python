@@ -12,41 +12,15 @@ Playwright が提供する各種ロケーター戦略を網羅的に示す。
 
 推奨: ユーザーから見える属性（ロール・テキスト・ラベル）を優先し、
 実装詳細に依存するセレクタ（CSS/XPath）は極力避ける。
-
-Playwright のライフサイクルはテストファイル内のフィクスチャで自己管理する。
 """
 import re
+import sys
+from pathlib import Path
 
-import pytest
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import expect, sync_playwright
-
-
-@pytest.fixture(scope="module")
-def browser():
-    """Playwright ブラウザの起動と終了を管理"""
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(headless=True)
-    yield browser
-    browser.close()
-    pw.stop()
-
-@pytest.fixture
-def context(browser):
-    """各テスト用のブラウザコンテキストを作成"""
-    context = browser.new_context(
-        viewport={"width": 1280, "height": 720},
-        locale="ja-JP",
-        timezone_id="Asia/Tokyo",
-    )
-    yield context
-    context.close()
-
-@pytest.fixture
-def page(context):
-    """各テスト用のページを作成"""
-    page = context.new_page()
-    yield page
-    page.close()
+from runner import TestRunner
 
 
 # ---------------------------------------------------------------------------
@@ -490,3 +464,60 @@ def test_all_inner_texts(page):
     assert len(texts) == 3
     assert texts[0] == "手順1: インストール"
     assert texts[2] == "手順3: 実行"
+
+
+def main():
+    runner = TestRunner("test_04_locators")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+
+        page_tests = [
+            test_get_by_role_link,
+            test_get_by_role_heading,
+            test_get_by_role_navigation,
+            test_get_by_role_button,
+            test_get_by_text_partial,
+            test_get_by_text_exact,
+            test_get_by_text_regex,
+            test_get_by_label,
+            test_get_by_label_checkbox,
+            test_get_by_placeholder,
+            test_get_by_placeholder_partial,
+            test_get_by_alt_text,
+            test_get_by_alt_text_regex,
+            test_get_by_title,
+            test_get_by_test_id,
+            test_locator_css_class,
+            test_locator_css_attribute,
+            test_locator_css_nth_child,
+            test_locator_xpath,
+            test_locator_xpath_contains,
+            test_filter_has_text,
+            test_filter_has,
+            test_filter_chained,
+            test_nth_element,
+            test_first_last,
+            test_nth_negative_index,
+            test_locator_chain,
+            test_locator_chain_role,
+            test_count,
+            test_count_on_live_site,
+            test_all_elements,
+            test_all_inner_texts,
+        ]
+        for test_func in page_tests:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+            runner.run(test_func, page)
+            context.close()
+
+        browser.close()
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

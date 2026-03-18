@@ -6,37 +6,13 @@ Frame API の使い方を示す。
 """
 
 import re
+import sys
+from pathlib import Path
 
-import pytest
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import Page, expect, sync_playwright
-
-
-@pytest.fixture(scope="module")
-def browser():
-    """Playwright ブラウザの起動と終了を管理"""
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(headless=True)
-    yield browser
-    browser.close()
-    pw.stop()
-
-@pytest.fixture
-def context(browser):
-    """各テスト用のブラウザコンテキストを作成"""
-    context = browser.new_context(
-        viewport={"width": 1280, "height": 720},
-        locale="ja-JP",
-        timezone_id="Asia/Tokyo",
-    )
-    yield context
-    context.close()
-
-@pytest.fixture
-def page(context):
-    """各テスト用のページを作成"""
-    page = context.new_page()
-    yield page
-    page.close()
+from runner import TestRunner
 
 
 # ============================================================
@@ -290,3 +266,39 @@ def test_frame_parent_frame(page: Page):
     # さらに上はメインフレーム
     grandparent = parent.parent_frame
     assert grandparent == page.main_frame, "祖父フレームはメインフレーム"
+
+
+def main():
+    runner = TestRunner("test_12_frames")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        for test_func in [
+            test_frame_locator,
+            test_frame_locator_with_form,
+            test_frame_by_name,
+            test_frame_by_name_not_found,
+            test_frame_by_url_string,
+            test_frame_by_url_pattern,
+            test_page_frames_list,
+            test_frames_url_property,
+            test_main_frame,
+            test_main_frame_is_first_in_frames,
+            test_main_frame_parent_is_none,
+            test_nested_iframes,
+            test_nested_iframe_outer_content,
+            test_frame_parent_frame,
+        ]:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+            runner.run(test_func, page)
+            context.close()
+        browser.close()
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

@@ -5,15 +5,21 @@ Playwright は同期 API と非同期 API の両方を提供する。
 非同期 API は async/await パターンを使い、
 イベントループベースのアプリケーションとの統合に適している。
 """
-import pytest
-from playwright.async_api import async_playwright, Page, expect
+import asyncio
+import sys
+import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from playwright.async_api import async_playwright, expect
+from runner import TestRunner
 
 
 # ---------------------------------------------------------------------------
 # 1. 非同期でのブラウザ起動と操作
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_async_launch_chromium():
+async def _async_launch_chromium():
     """非同期で Chromium ブラウザを起動する"""
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
@@ -22,8 +28,11 @@ async def test_async_launch_chromium():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_launch_firefox():
+def test_async_launch_chromium():
+    asyncio.run(_async_launch_chromium())
+
+
+async def _async_launch_firefox():
     """非同期で Firefox ブラウザを起動する"""
     async with async_playwright() as p:
         browser = await p.firefox.launch(headless=True)
@@ -31,8 +40,11 @@ async def test_async_launch_firefox():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_launch_webkit():
+def test_async_launch_firefox():
+    asyncio.run(_async_launch_firefox())
+
+
+async def _async_launch_webkit():
     """非同期で WebKit ブラウザを起動する"""
     async with async_playwright() as p:
         browser = await p.webkit.launch(headless=True)
@@ -40,8 +52,11 @@ async def test_async_launch_webkit():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_new_page():
+def test_async_launch_webkit():
+    asyncio.run(_async_launch_webkit())
+
+
+async def _async_new_page():
     """非同期でページを作成する"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -50,8 +65,11 @@ async def test_async_new_page():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_context_and_page():
+def test_async_new_page():
+    asyncio.run(_async_new_page())
+
+
+async def _async_context_and_page():
     """非同期でコンテキストとページを作成する"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -66,11 +84,14 @@ async def test_async_context_and_page():
         await browser.close()
 
 
+def test_async_context_and_page():
+    asyncio.run(_async_context_and_page())
+
+
 # ---------------------------------------------------------------------------
 # 2. 非同期でのページ遷移
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_async_navigation():
+async def _async_navigation():
     """非同期でのブラウザ起動とページ遷移"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -81,8 +102,11 @@ async def test_async_navigation():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_navigation_wait_until():
+def test_async_navigation():
+    asyncio.run(_async_navigation())
+
+
+async def _async_navigation_wait_until():
     """非同期でのページ遷移 - wait_until オプション"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -97,8 +121,11 @@ async def test_async_navigation_wait_until():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_go_back_and_forward():
+def test_async_navigation_wait_until():
+    asyncio.run(_async_navigation_wait_until())
+
+
+async def _async_go_back_and_forward():
     """非同期での戻る・進む操作"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -120,8 +147,11 @@ async def test_async_go_back_and_forward():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_reload():
+def test_async_go_back_and_forward():
+    asyncio.run(_async_go_back_and_forward())
+
+
+async def _async_reload():
     """非同期でのページリロード"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -134,11 +164,14 @@ async def test_async_reload():
         await browser.close()
 
 
+def test_async_reload():
+    asyncio.run(_async_reload())
+
+
 # ---------------------------------------------------------------------------
 # 3. 非同期でのロケーター操作
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_async_locator():
+async def _async_locator():
     """非同期でのロケーター操作"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -148,8 +181,11 @@ async def test_async_locator():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_locator_fill():
+def test_async_locator():
+    asyncio.run(_async_locator())
+
+
+async def _async_locator_fill():
     """非同期でのテキスト入力"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -164,8 +200,11 @@ async def test_async_locator_fill():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_locator_get_by_role():
+def test_async_locator_fill():
+    asyncio.run(_async_locator_fill())
+
+
+async def _async_locator_get_by_role():
     """非同期での get_by_role ロケーター"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -185,8 +224,11 @@ async def test_async_locator_get_by_role():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_locator_get_by_text():
+def test_async_locator_get_by_role():
+    asyncio.run(_async_locator_get_by_role())
+
+
+async def _async_locator_get_by_text():
     """非同期での get_by_text ロケーター"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -207,8 +249,11 @@ async def test_async_locator_get_by_text():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_locator_multiple_elements():
+def test_async_locator_get_by_text():
+    asyncio.run(_async_locator_get_by_text())
+
+
+async def _async_locator_multiple_elements():
     """非同期での複数要素の操作"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -232,11 +277,14 @@ async def test_async_locator_multiple_elements():
         await browser.close()
 
 
+def test_async_locator_multiple_elements():
+    asyncio.run(_async_locator_multiple_elements())
+
+
 # ---------------------------------------------------------------------------
 # 4. 非同期でのアサーション
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_async_assertion_to_have_title():
+async def _async_assertion_to_have_title():
     """非同期でのタイトルアサーション"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -247,8 +295,11 @@ async def test_async_assertion_to_have_title():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_assertion_to_have_url():
+def test_async_assertion_to_have_title():
+    asyncio.run(_async_assertion_to_have_title())
+
+
+async def _async_assertion_to_have_url():
     """非同期での URL アサーション"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -258,8 +309,11 @@ async def test_async_assertion_to_have_url():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_assertion_to_be_visible():
+def test_async_assertion_to_have_url():
+    asyncio.run(_async_assertion_to_have_url())
+
+
+async def _async_assertion_to_be_visible():
     """非同期での要素表示アサーション"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -269,8 +323,11 @@ async def test_async_assertion_to_be_visible():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_assertion_to_have_text():
+def test_async_assertion_to_be_visible():
+    asyncio.run(_async_assertion_to_be_visible())
+
+
+async def _async_assertion_to_have_text():
     """非同期でのテキストアサーション"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -280,8 +337,11 @@ async def test_async_assertion_to_have_text():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_assertion_to_have_value():
+def test_async_assertion_to_have_text():
+    asyncio.run(_async_assertion_to_have_text())
+
+
+async def _async_assertion_to_have_value():
     """非同期での入力値アサーション"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -291,8 +351,11 @@ async def test_async_assertion_to_have_value():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_assertion_to_have_attribute():
+def test_async_assertion_to_have_value():
+    asyncio.run(_async_assertion_to_have_value())
+
+
+async def _async_assertion_to_have_attribute():
     """非同期での属性アサーション"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -304,8 +367,11 @@ async def test_async_assertion_to_have_attribute():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_assertion_not():
+def test_async_assertion_to_have_attribute():
+    asyncio.run(_async_assertion_to_have_attribute())
+
+
+async def _async_assertion_not():
     """非同期での否定アサーション"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -318,11 +384,14 @@ async def test_async_assertion_not():
         await browser.close()
 
 
+def test_async_assertion_not():
+    asyncio.run(_async_assertion_not())
+
+
 # ---------------------------------------------------------------------------
 # 5. 非同期でのネットワーク傍受
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_async_route_intercept():
+async def _async_route_intercept():
     """非同期でのリクエスト傍受（route）"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -346,8 +415,11 @@ async def test_async_route_intercept():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_route_mock_response():
+def test_async_route_intercept():
+    asyncio.run(_async_route_intercept())
+
+
+async def _async_route_mock_response():
     """非同期でのレスポンスモック"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -373,8 +445,11 @@ async def test_async_route_mock_response():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_request_response_events():
+def test_async_route_mock_response():
+    asyncio.run(_async_route_mock_response())
+
+
+async def _async_request_response_events():
     """非同期でのリクエスト・レスポンスイベント監視"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -399,11 +474,14 @@ async def test_async_request_response_events():
         await browser.close()
 
 
+def test_async_request_response_events():
+    asyncio.run(_async_request_response_events())
+
+
 # ---------------------------------------------------------------------------
 # 6. 非同期でのスクリーンショット
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_async_screenshot_page():
+async def _async_screenshot_page():
     """非同期でのページ全体スクリーンショット"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -417,8 +495,11 @@ async def test_async_screenshot_page():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_screenshot_full_page():
+def test_async_screenshot_page():
+    asyncio.run(_async_screenshot_page())
+
+
+async def _async_screenshot_full_page():
     """非同期でのフルページスクリーンショット"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -431,8 +512,11 @@ async def test_async_screenshot_full_page():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_screenshot_element():
+def test_async_screenshot_full_page():
+    asyncio.run(_async_screenshot_full_page())
+
+
+async def _async_screenshot_element():
     """非同期での要素スクリーンショット"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -449,8 +533,11 @@ async def test_async_screenshot_element():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_screenshot_to_file(tmp_path):
+def test_async_screenshot_element():
+    asyncio.run(_async_screenshot_element())
+
+
+async def _async_screenshot_to_file():
     """非同期でのスクリーンショット保存"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -458,18 +545,22 @@ async def test_async_screenshot_to_file(tmp_path):
         await page.set_content("<h1>スクリーンショットテスト</h1>")
 
         # ファイルに保存
-        filepath = tmp_path / "async_screenshot.png"
-        await page.screenshot(path=str(filepath))
-        assert filepath.exists()
-        assert filepath.stat().st_size > 0
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            filepath = Path(tmp_dir) / "async_screenshot.png"
+            await page.screenshot(path=str(filepath))
+            assert filepath.exists()
+            assert filepath.stat().st_size > 0
         await browser.close()
+
+
+def test_async_screenshot_to_file():
+    asyncio.run(_async_screenshot_to_file())
 
 
 # ---------------------------------------------------------------------------
 # 7. 非同期でのJavaScript評価
 # ---------------------------------------------------------------------------
-@pytest.mark.asyncio
-async def test_async_evaluate_expression():
+async def _async_evaluate_expression():
     """非同期での JavaScript 式の評価"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -481,8 +572,11 @@ async def test_async_evaluate_expression():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_evaluate_function():
+def test_async_evaluate_expression():
+    asyncio.run(_async_evaluate_expression())
+
+
+async def _async_evaluate_function():
     """非同期での JavaScript 関数の評価"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -499,8 +593,11 @@ async def test_async_evaluate_function():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_evaluate_with_args():
+def test_async_evaluate_function():
+    asyncio.run(_async_evaluate_function())
+
+
+async def _async_evaluate_with_args():
     """非同期での引数付き JavaScript 評価"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -512,8 +609,11 @@ async def test_async_evaluate_with_args():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_evaluate_dom():
+def test_async_evaluate_with_args():
+    asyncio.run(_async_evaluate_with_args())
+
+
+async def _async_evaluate_dom():
     """非同期での DOM 操作を伴う JavaScript 評価"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -545,8 +645,11 @@ async def test_async_evaluate_dom():
         await browser.close()
 
 
-@pytest.mark.asyncio
-async def test_async_evaluate_handle():
+def test_async_evaluate_dom():
+    asyncio.run(_async_evaluate_dom())
+
+
+async def _async_evaluate_handle():
     """非同期での evaluate_handle による要素ハンドル取得"""
     async with async_playwright() as p:
         browser = await p.chromium.launch()
@@ -564,3 +667,56 @@ async def test_async_evaluate_handle():
 
         await handle.dispose()
         await browser.close()
+
+
+def test_async_evaluate_handle():
+    asyncio.run(_async_evaluate_handle())
+
+
+# ---------------------------------------------------------------------------
+# メイン実行
+# ---------------------------------------------------------------------------
+def main():
+    runner = TestRunner("test_24_async_api")
+    tests = [
+        test_async_launch_chromium,
+        test_async_launch_firefox,
+        test_async_launch_webkit,
+        test_async_new_page,
+        test_async_context_and_page,
+        test_async_navigation,
+        test_async_navigation_wait_until,
+        test_async_go_back_and_forward,
+        test_async_reload,
+        test_async_locator,
+        test_async_locator_fill,
+        test_async_locator_get_by_role,
+        test_async_locator_get_by_text,
+        test_async_locator_multiple_elements,
+        test_async_assertion_to_have_title,
+        test_async_assertion_to_have_url,
+        test_async_assertion_to_be_visible,
+        test_async_assertion_to_have_text,
+        test_async_assertion_to_have_value,
+        test_async_assertion_to_have_attribute,
+        test_async_assertion_not,
+        test_async_route_intercept,
+        test_async_route_mock_response,
+        test_async_request_response_events,
+        test_async_screenshot_page,
+        test_async_screenshot_full_page,
+        test_async_screenshot_element,
+        test_async_screenshot_to_file,
+        test_async_evaluate_expression,
+        test_async_evaluate_function,
+        test_async_evaluate_with_args,
+        test_async_evaluate_dom,
+        test_async_evaluate_handle,
+    ]
+    for t in tests:
+        runner.run(t)
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

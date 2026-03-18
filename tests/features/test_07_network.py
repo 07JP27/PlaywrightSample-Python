@@ -7,10 +7,15 @@ HAR 記録など、ネットワークレベルの操作を示す。
 
 import json
 import os
+import sys
 import tempfile
+from pathlib import Path
 
-import pytest
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import sync_playwright
+
+from runner import TestRunner
 
 # set_content + fetch が動作するよう HTTP オリジンを確保するためのモック URL
 _MOCK_ORIGIN = "https://mock.test/"
@@ -27,33 +32,6 @@ def _setup_mock_origin(target):
         ),
     )
 
-
-@pytest.fixture(scope="module")
-def browser():
-    """Playwright ブラウザの起動と終了を管理"""
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(headless=True)
-    yield browser
-    browser.close()
-    pw.stop()
-
-@pytest.fixture
-def context(browser):
-    """各テスト用のブラウザコンテキストを作成"""
-    context = browser.new_context(
-        viewport={"width": 1280, "height": 720},
-        locale="ja-JP",
-        timezone_id="Asia/Tokyo",
-    )
-    yield context
-    context.close()
-
-@pytest.fixture
-def page(context):
-    """各テスト用のページを作成"""
-    page = context.new_page()
-    yield page
-    page.close()
 
 
 # ---------------------------------------------------------------------------
@@ -359,3 +337,49 @@ def test_response_body(page):
     body_json = response.json()
     assert body_json["total"] == 3
     assert body_json["items"] == [1, 2, 3]
+
+
+def main():
+    runner = TestRunner("test_07_network")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+
+        # --- page テスト ---
+        page_tests = [
+            test_route_fulfill,
+            test_route_continue_with_headers,
+            test_route_abort_images,
+            test_expect_response,
+            test_expect_request,
+            test_network_events,
+            test_unroute,
+            test_response_body,
+        ]
+        for test_func in page_tests:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+            runner.run(test_func, page)
+            context.close()
+
+        # --- browser テスト ---
+        runner.run(test_har_recording, browser)
+
+        # --- context テスト ---
+        context = browser.new_context(
+            viewport={"width": 1280, "height": 720},
+            locale="ja-JP",
+            timezone_id="Asia/Tokyo",
+        )
+        runner.run(test_context_route, context)
+        context.close()
+
+        browser.close()
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

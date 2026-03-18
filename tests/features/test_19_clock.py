@@ -5,37 +5,13 @@ test_19_clock.py - Clock（時刻制御）のサンプル
 フェイクタイマーで制御し、時間依存のテストを効率化する。
 """
 import datetime
+import sys
+from pathlib import Path
 
-import pytest
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import expect, sync_playwright
-
-
-@pytest.fixture(scope="module")
-def browser():
-    """Playwright ブラウザの起動と終了を管理"""
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(headless=True)
-    yield browser
-    browser.close()
-    pw.stop()
-
-@pytest.fixture
-def context(browser):
-    """各テスト用のブラウザコンテキストを作成"""
-    context = browser.new_context(
-        viewport={"width": 1280, "height": 720},
-        locale="ja-JP",
-        timezone_id="Asia/Tokyo",
-    )
-    yield context
-    context.close()
-
-@pytest.fixture
-def page(context):
-    """各テスト用のページを作成"""
-    page = context.new_page()
-    yield page
-    page.close()
+from runner import TestRunner
 
 
 # ---------------------------------------------------------------------------
@@ -251,3 +227,34 @@ def test_run_for_with_string(page):
     # "00:05" = 5 秒分実行
     page.clock.run_for("00:05")
     expect(page.locator("#tick")).to_have_text("5")
+
+
+def main():
+    runner = TestRunner("test_19_clock")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        for test_func in [
+            test_install_fake_timers,
+            test_fixed_time,
+            test_fixed_time_does_not_advance,
+            test_fast_forward,
+            test_fast_forward_with_string,
+            test_pause_at,
+            test_resume,
+            test_run_for,
+            test_run_for_with_string,
+        ]:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+            runner.run(test_func, page)
+            context.close()
+        browser.close()
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

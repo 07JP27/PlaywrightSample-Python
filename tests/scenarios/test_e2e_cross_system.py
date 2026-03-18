@@ -9,9 +9,15 @@ APIバックエンドとして httpbin.org を使用し、
 UIフロントエンドとして SauceDemo を使用する。
 """
 import json
+import sys
+from pathlib import Path
 
-import pytest
+sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
+
 from playwright.sync_api import Page, sync_playwright
+from runner import TestRunner
+from evidence import Evidence, load_test_users, generate_evidence_report
 
 from pages.saucedemo.login_page import SauceDemoLoginPage
 from pages.saucedemo.inventory_page import SauceDemoInventoryPage
@@ -22,28 +28,20 @@ from pages.saucedemo.checkout_page import SauceDemoCheckoutPage
 HTTPBIN_BASE_URL = "https://httpbin.org"
 
 
-@pytest.fixture
-def api_context():
-    """httpbin.org 向け APIリクエストコンテキストを生成・破棄"""
-    pw = sync_playwright().start()
-    context = pw.request.new_context(base_url=HTTPBIN_BASE_URL)
-    yield context
-    context.dispose()
-    pw.stop()
+def create_api_context(playwright_instance):
+    """httpbin.org 向け APIリクエストコンテキストを生成する"""
+    return playwright_instance.request.new_context(base_url=HTTPBIN_BASE_URL)
 
 
-@pytest.fixture
 def login_to_saucedemo(page: Page, test_users: dict):
     """SauceDemoにログインし、ログイン後のページオブジェクトを返す"""
     creds = test_users["saucedemo"]["standard_user"]
     login_page = SauceDemoLoginPage(page)
     login_page.navigate_to_login()
     login_page.login(creds["username"], creds["password"])
-    inventory_page = SauceDemoInventoryPage(page)
-    return inventory_page
+    return SauceDemoInventoryPage(page)
 
 
-@pytest.mark.slow
 class TestCrossSystemFlow:
     """API + UI 連携のクロスシステム統合テストクラス"""
 
@@ -336,3 +334,68 @@ class TestCrossSystemFlow:
         assert sent_completion["status"] == "completed", "完了ステータスが一致しない"
 
         evidence.capture("Step6_注文完了通知送信後")
+
+
+def main():
+    runner = TestRunner("test_e2e_cross_system")
+    session_id = __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S")
+    test_users = load_test_users()
+    all_evidence = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        api_context = create_api_context(p)
+        instance = TestCrossSystemFlow()
+
+        # Tests requiring api_context + page + test_users + evidence
+        ui_tests = [
+            instance.test_api_health_check_then_ui_flow,
+            instance.test_api_data_preparation_for_ui_verification,
+            instance.test_api_mock_workflow_approval,
+            instance.test_parallel_api_and_ui_operations,
+            instance.test_end_to_end_with_api_validation,
+        ]
+
+        for test_func in ui_tests:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+
+            output_dir = Path(__file__).resolve().parent.parent.parent / "output"
+            scenario_name = Path(__file__).stem.replace("test_e2e_", "")
+            evidence_dir = output_dir / "evidence" / "scenarios" / scenario_name / session_id
+            ev = Evidence(test_func.__name__, evidence_dir, page)
+
+            runner.run(test_func, api_context, page, test_users, ev)
+            all_evidence.append(ev.metadata())
+            context.close()
+
+        # API-only test (no page/evidence needed)
+        api_only_test = instance.test_api_response_headers_verification
+        context = browser.new_context(
+            viewport={"width": 1280, "height": 720},
+            locale="ja-JP",
+            timezone_id="Asia/Tokyo",
+        )
+        page = context.new_page()
+        output_dir = Path(__file__).resolve().parent.parent.parent / "output"
+        scenario_name = Path(__file__).stem.replace("test_e2e_", "")
+        evidence_dir = output_dir / "evidence" / "scenarios" / scenario_name / session_id
+        ev = Evidence(api_only_test.__name__, evidence_dir, page)
+        runner.run(api_only_test, api_context)
+        all_evidence.append(ev.metadata())
+        context.close()
+
+        api_context.dispose()
+        browser.close()
+
+    scenario_name = Path(__file__).stem.replace("test_e2e_", "")
+    generate_evidence_report(scenario_name, all_evidence, session_id)
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

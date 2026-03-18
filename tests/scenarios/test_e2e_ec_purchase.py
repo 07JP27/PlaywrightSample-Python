@@ -10,8 +10,15 @@ ECサイトの購買フロー全体を検証するエンドツーエンドテス
   - カート操作（追加・削除・買い物続行）
   - チェックアウト（情報入力・バリデーション・注文確定）
 """
-import pytest
-from playwright.sync_api import Page, expect
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
+
+from playwright.sync_api import Page, expect, sync_playwright
+from runner import TestRunner
+from evidence import Evidence, load_test_users, generate_evidence_report
 
 from pages.saucedemo import (
     SauceDemoLoginPage,
@@ -21,7 +28,6 @@ from pages.saucedemo import (
 )
 
 
-@pytest.mark.slow
 class TestECPurchaseFlow:
     """EC購買フロー E2Eシナリオテストクラス"""
 
@@ -241,3 +247,52 @@ class TestECPurchaseFlow:
         # 商品一覧ページに戻ることを確認
         expect(page).to_have_url(SauceDemoInventoryPage.URL)
         evidence.capture("商品一覧ページURL確認")
+
+
+def main():
+    runner = TestRunner("test_e2e_ec_purchase")
+    session_id = __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S")
+    test_users = load_test_users()
+    all_evidence = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        instance = TestECPurchaseFlow()
+
+        test_methods = [
+            instance.test_login_and_view_products,
+            instance.test_sort_products_by_price,
+            instance.test_add_multiple_products_to_cart,
+            instance.test_remove_product_from_cart,
+            instance.test_complete_purchase_flow,
+            instance.test_checkout_validation_error,
+            instance.test_locked_out_user_cannot_login,
+            instance.test_continue_shopping_from_cart,
+        ]
+
+        for test_func in test_methods:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+
+            output_dir = Path(__file__).resolve().parent.parent.parent / "output"
+            scenario_name = Path(__file__).stem.replace("test_e2e_", "")
+            evidence_dir = output_dir / "evidence" / "scenarios" / scenario_name / session_id
+            ev = Evidence(test_func.__name__, evidence_dir, page)
+
+            runner.run(test_func, page, test_users, ev)
+            all_evidence.append(ev.metadata())
+            context.close()
+
+        browser.close()
+
+    scenario_name = Path(__file__).stem.replace("test_e2e_", "")
+    generate_evidence_report(scenario_name, all_evidence, session_id)
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

@@ -7,9 +7,16 @@ test_17_tracing.py - トレーシングのサンプル
 """
 
 import os
+import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import sync_playwright
+
+from runner import TestRunner
+
+SKIP_TESTS = {}
 
 # プロジェクトルートと出力ディレクトリ
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -271,3 +278,22 @@ def test_tracing_all_options():
         assert os.path.exists(trace_path)
         assert os.path.getsize(trace_path) > 0
         browser.close()
+
+
+def main():
+    runner = TestRunner("test_17_tracing")
+    all_tests = [
+        test_basic_tracing,
+        test_tracing_with_screenshots,
+        test_tracing_with_snapshots,
+        test_tracing_with_sources,
+        test_tracing_chunks,
+        test_tracing_all_options,
+    ]
+    for t in all_tests:
+        runner.run(t, skip_reason=SKIP_TESTS.get(t.__name__))
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

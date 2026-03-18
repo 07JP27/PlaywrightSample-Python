@@ -5,8 +5,16 @@ test_14_emulation.py - エミュレーションのサンプル
 様々な環境をエミュレートする方法を示す。
 """
 
-import pytest
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import sync_playwright
+
+from runner import TestRunner
+
+SKIP_TESTS = {}
 
 TARGET_URL = "https://www.microsoft.com/ja-jp"
 
@@ -837,3 +845,33 @@ class TestCombinedEmulation:
 
             context.close()
             browser.close()
+
+
+def main():
+    runner = TestRunner("test_14_emulation")
+    test_classes = [
+        TestDeviceEmulation,
+        TestViewport,
+        TestDeviceScaleFactor,
+        TestMobileMode,
+        TestTouchSupport,
+        TestGeolocation,
+        TestLocale,
+        TestTimezone,
+        TestColorScheme,
+        TestUserAgent,
+        TestOfflineMode,
+        TestGeolocationChange,
+        TestPermissions,
+        TestCombinedEmulation,
+    ]
+    for cls in test_classes:
+        obj = cls()
+        for method_name in [m for m in dir(obj) if m.startswith("test_")]:
+            method = getattr(obj, method_name)
+            runner.run(method, skip_reason=SKIP_TESTS.get(method_name))
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

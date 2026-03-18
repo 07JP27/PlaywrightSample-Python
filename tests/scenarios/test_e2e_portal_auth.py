@@ -5,16 +5,20 @@ The Internet (https://the-internet.herokuapp.com/) を対象に、
 ログイン認証、フォーム操作（チェックボックス・ドロップダウン・ファイルアップロード）を
 一連のポータル業務フローとして検証するシナリオテスト。
 """
+import sys
 from pathlib import Path
 
-import pytest
-from playwright.sync_api import Page, expect
+sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
+
+from playwright.sync_api import Page, expect, sync_playwright
+from runner import TestRunner
+from evidence import Evidence, load_test_users, generate_evidence_report
 
 from pages.the_internet.login_page import TheInternetLoginPage
 from pages.the_internet.form_page import TheInternetFormPage
 
 
-@pytest.mark.slow
 class TestPortalAuthFlow:
     """社内ポータル認証・フォーム操作フローのE2Eシナリオテスト"""
 
@@ -187,3 +191,56 @@ class TestPortalAuthFlow:
         form_page.upload_file(str(upload_file))
         assert form_page.get_uploaded_filename() == "upload_sample.txt"
         evidence.capture("ファイルアップロード完了")
+
+
+def main():
+    runner = TestRunner("test_e2e_portal_auth")
+    session_id = __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S")
+    test_users = load_test_users()
+    all_evidence = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        instance = TestPortalAuthFlow()
+
+        # (test_method, needs_test_users)
+        test_specs = [
+            (instance.test_login_success, True),
+            (instance.test_login_failure, False),
+            (instance.test_login_logout_relogin_cycle, True),
+            (instance.test_checkbox_operations, False),
+            (instance.test_dropdown_selection, False),
+            (instance.test_file_upload, False),
+            (instance.test_complete_portal_workflow, True),
+        ]
+
+        for test_func, needs_users in test_specs:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+
+            output_dir = Path(__file__).resolve().parent.parent.parent / "output"
+            scenario_name = Path(__file__).stem.replace("test_e2e_", "")
+            evidence_dir = output_dir / "evidence" / "scenarios" / scenario_name / session_id
+            ev = Evidence(test_func.__name__, evidence_dir, page)
+
+            if needs_users:
+                runner.run(test_func, page, test_users, ev)
+            else:
+                runner.run(test_func, page, ev)
+
+            all_evidence.append(ev.metadata())
+            context.close()
+
+        browser.close()
+
+    scenario_name = Path(__file__).stem.replace("test_e2e_", "")
+    generate_evidence_report(scenario_name, all_evidence, session_id)
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

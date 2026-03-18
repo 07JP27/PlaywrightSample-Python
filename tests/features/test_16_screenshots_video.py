@@ -5,10 +5,16 @@ test_16_screenshots_video.py - スクリーンショット・動画・PDF のサ
 """
 
 import os
+import sys
 from pathlib import Path
 
-import pytest
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import sync_playwright
+
+from runner import TestRunner
+
+SKIP_TESTS = {}
 
 # プロジェクトルートディレクトリ
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -234,3 +240,24 @@ def test_pdf_generation():
         assert os.path.exists(output_path)
         assert os.path.getsize(output_path) > 0
         browser.close()
+
+
+def main():
+    runner = TestRunner("test_16_screenshots_video")
+    all_tests = [
+        test_page_screenshot,
+        test_full_page_screenshot,
+        test_element_screenshot,
+        test_clip_screenshot,
+        test_jpeg_screenshot,
+        test_video_recording,
+        test_video_recording_with_size,
+        test_pdf_generation,
+    ]
+    for t in all_tests:
+        runner.run(t, skip_reason=SKIP_TESTS.get(t.__name__))
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

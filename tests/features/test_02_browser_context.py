@@ -5,8 +5,19 @@ BrowserContext はブラウザ内の独立したセッションを表す。
 コンテキスト間は完全に分離され、Cookie やストレージを共有しない。
 """
 
-import pytest
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import sync_playwright
+
+from runner import TestRunner
+
+SKIP_TESTS = {
+    "test_http_credentials": "Basic 認証が必要なテストサーバーが無いためスキップ",
+    "test_proxy_context": "プロキシサーバーが利用できない環境ではスキップ",
+}
 
 TARGET_URL = "https://www.microsoft.com/ja-jp"
 
@@ -179,7 +190,6 @@ class TestViewport:
 class TestHttpCredentials:
     """http_credentials でBasic 認証を事前設定"""
 
-    @pytest.mark.skip(reason="Basic 認証が必要なテストサーバーが無いためスキップ")
     def test_http_credentials(self):
         """http_credentials を設定したコンテキストを作成"""
         with sync_playwright() as p:
@@ -205,7 +215,6 @@ class TestHttpCredentials:
 class TestProxy:
     """proxy オプションでプロキシを設定"""
 
-    @pytest.mark.skip(reason="プロキシサーバーが利用できない環境ではスキップ")
     def test_proxy_context(self):
         """プロキシ設定を指定してコンテキストを作成"""
         with sync_playwright() as p:
@@ -403,3 +412,29 @@ class TestContextClose:
 
             context_2.close()
             browser.close()
+
+
+def main():
+    runner = TestRunner("test_02_browser_context")
+    test_classes = [
+        TestBasicContext,
+        TestMultipleContexts,
+        TestCookieManagement,
+        TestViewport,
+        TestHttpCredentials,
+        TestProxy,
+        TestPermissions,
+        TestUserAgent,
+        TestContextIsolation,
+        TestContextClose,
+    ]
+    for cls in test_classes:
+        obj = cls()
+        for method_name in [m for m in dir(obj) if m.startswith("test_")]:
+            method = getattr(obj, method_name)
+            runner.run(method, skip_reason=SKIP_TESTS.get(method_name))
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

@@ -5,16 +5,13 @@ test_20_api_testing.py - API テストのサンプル
 Playwright の APIRequestContext を使用してHTTPリクエストを送信する。
 """
 
-import pytest
+import sys
+from pathlib import Path
+
 from playwright.sync_api import Playwright, expect, sync_playwright
 
-
-@pytest.fixture(scope="module")
-def playwright():
-    """Playwright インスタンスの起動と終了を管理"""
-    pw = sync_playwright().start()
-    yield pw
-    pw.stop()
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from runner import TestRunner
 
 
 # ─────────────────────────────────────────────
@@ -387,3 +384,40 @@ def test_expect_not_to_be_ok(playwright: Playwright):
     expect(response).not_to_be_ok()
     assert response.status == 404
     api_context.dispose()
+
+
+def main():
+    runner = TestRunner("test_20_api_testing")
+    pw = sync_playwright().start()
+    for test_func in [
+        test_get_request,
+        test_get_request_with_query_params,
+        test_post_request_with_json,
+        test_post_request_with_form_data,
+        test_put_request,
+        test_patch_request,
+        test_delete_request,
+        test_response_status_ok,
+        test_response_status_codes,
+        test_response_status_text,
+        test_response_json,
+        test_response_text,
+        test_response_body,
+        test_custom_headers_on_context,
+        test_custom_headers_per_request,
+        test_authorization_header,
+        test_new_context_with_base_url,
+        test_new_context_with_timeout,
+        test_multiple_contexts,
+        test_context_dispose,
+        test_expect_to_be_ok,
+        test_expect_to_be_ok_with_post,
+        test_expect_not_to_be_ok,
+    ]:
+        runner.run(test_func, pw)
+    pw.stop()
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

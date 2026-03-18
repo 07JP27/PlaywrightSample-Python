@@ -5,38 +5,13 @@ test_22_js_evaluation.py - JavaScript 実行・評価のサンプル
 値の取得、関数の公開、イベントの監視を行う方法を示す。
 """
 
-import pytest
+import sys
+from pathlib import Path
+
 from playwright.sync_api import expect, sync_playwright
 
-
-@pytest.fixture(scope="module")
-def browser():
-    """Playwright ブラウザの起動と終了を管理"""
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(headless=True)
-    yield browser
-    browser.close()
-    pw.stop()
-
-
-@pytest.fixture
-def context(browser):
-    """各テスト用のブラウザコンテキストを作成"""
-    context = browser.new_context(
-        viewport={"width": 1280, "height": 720},
-        locale="ja-JP",
-        timezone_id="Asia/Tokyo",
-    )
-    yield context
-    context.close()
-
-
-@pytest.fixture
-def page(context):
-    """各テスト用のページを作成"""
-    page = context.new_page()
-    yield page
-    page.close()
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from runner import TestRunner
 
 
 # ---------------------------------------------------------------------------
@@ -465,3 +440,68 @@ def test_evaluate_all_computed_values(page):
     )
 
     assert widths == [100, 200, 300]
+
+
+def main():
+    runner = TestRunner("test_22_js_evaluation")
+    pw = sync_playwright().start()
+    browser = pw.chromium.launch(headless=True)
+
+    # page tests
+    page_tests = [
+        test_evaluate_basic,
+        test_evaluate_expression,
+        test_evaluate_with_args,
+        test_evaluate_with_single_arg,
+        test_evaluate_with_dict_arg,
+        test_evaluate_with_dom_arg,
+        test_evaluate_handle,
+        test_evaluate_handle_window,
+        test_locator_evaluate,
+        test_locator_evaluate_with_arg,
+        test_expose_function,
+        test_expose_function_with_button,
+        test_console_message,
+        test_console_message_type,
+        test_page_error,
+        test_page_error_reference,
+        test_evaluate_complex_object,
+        test_evaluate_array_of_objects,
+        test_evaluate_date_and_special_types,
+        test_evaluate_all,
+        test_evaluate_all_attributes,
+        test_evaluate_all_computed_values,
+    ]
+    for test_func in page_tests:
+        context = browser.new_context(
+            viewport={"width": 1280, "height": 720},
+            locale="ja-JP",
+            timezone_id="Asia/Tokyo",
+        )
+        page = context.new_page()
+        runner.run(test_func, page)
+        page.close()
+        context.close()
+
+    # context tests
+    context_tests = [
+        test_add_init_script,
+        test_add_init_script_function,
+        test_add_init_script_persists_across_navigations,
+    ]
+    for test_func in context_tests:
+        context = browser.new_context(
+            viewport={"width": 1280, "height": 720},
+            locale="ja-JP",
+            timezone_id="Asia/Tokyo",
+        )
+        runner.run(test_func, context)
+        context.close()
+
+    browser.close()
+    pw.stop()
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

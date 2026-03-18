@@ -6,39 +6,13 @@ Playwright の Web-first アサーションは自動的にリトライし、
 """
 
 import re
+import sys
+from pathlib import Path
 
-import pytest
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import Page, expect, sync_playwright
-
-
-@pytest.fixture(scope="module")
-def browser():
-    """Playwright ブラウザの起動と終了を管理"""
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(headless=True)
-    yield browser
-    browser.close()
-    pw.stop()
-
-
-@pytest.fixture
-def context(browser):
-    """各テスト用のブラウザコンテキストを作成"""
-    context = browser.new_context(
-        viewport={"width": 1280, "height": 720},
-        locale="ja-JP",
-        timezone_id="Asia/Tokyo",
-    )
-    yield context
-    context.close()
-
-
-@pytest.fixture
-def page(context):
-    """各テスト用のページを作成"""
-    page = context.new_page()
-    yield page
-    page.close()
+from runner import TestRunner
 
 
 # ============================================================
@@ -416,3 +390,55 @@ def test_not_to_be_visible(page: Page):
     expect(page.locator("#tooltip")).not_to_be_visible()
     # DOM に存在しない要素も not_to_be_visible
     expect(page.locator("#non-existent")).not_to_be_visible()
+
+
+def main():
+    runner = TestRunner("test_06_assertions")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+
+        page_tests = [
+            test_to_have_title,
+            test_to_have_url,
+            test_to_be_visible,
+            test_to_be_hidden,
+            test_to_be_attached,
+            test_to_be_enabled,
+            test_to_be_disabled,
+            test_to_be_editable,
+            test_to_be_empty,
+            test_to_be_focused,
+            test_to_be_checked,
+            test_to_be_in_viewport,
+            test_to_have_text,
+            test_to_contain_text,
+            test_to_have_value,
+            test_to_have_values,
+            test_to_have_attribute,
+            test_to_have_class,
+            test_to_contain_class,
+            test_to_have_css,
+            test_to_have_id,
+            test_to_have_count,
+            test_to_have_js_property,
+            test_to_have_accessible_name,
+            test_to_have_accessible_description,
+            test_to_have_role,
+            test_not_to_be_visible,
+        ]
+        for test_func in page_tests:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+            runner.run(test_func, page)
+            context.close()
+
+        browser.close()
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

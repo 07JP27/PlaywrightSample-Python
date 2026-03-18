@@ -7,9 +7,17 @@ test_15_auth_storage.py - 認証・ストレージ状態のサンプル
 
 import json
 import os
+import sys
 import tempfile
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from playwright.sync_api import sync_playwright
+
+from runner import TestRunner
+
+SKIP_TESTS = {}
 
 
 # ---------------------------------------------------------------------------
@@ -401,3 +409,28 @@ def test_clear_cookies_by_domain():
 
         context.close()
         browser.close()
+
+
+def main():
+    runner = TestRunner("test_15_auth_storage")
+    all_tests = [
+        test_add_cookies,
+        test_add_cookies_with_options,
+        test_save_and_restore_storage_state,
+        test_storage_state_file_contains_cookies_and_origins,
+        test_restore_storage_state_from_dict,
+        test_set_local_storage_via_init_script,
+        test_set_local_storage_via_evaluate,
+        test_get_cookies_all,
+        test_get_cookies_by_url,
+        test_clear_all_cookies,
+        test_clear_cookies_by_name,
+        test_clear_cookies_by_domain,
+    ]
+    for t in all_tests:
+        runner.run(t, skip_reason=SKIP_TESTS.get(t.__name__))
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

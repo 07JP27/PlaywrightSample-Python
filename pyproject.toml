@@ -3,11 +3,3 @@ name = "playwright-sample-python"
 version = "1.0.0"
 description = "Playwright for Python の全機能を網羅するサンプルプロジェクト"
 requires-python = ">=3.9"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-asyncio_mode = "auto"
-markers = [
-    "slow: 実行に時間がかかるテスト",
-    "skip_ci: CI 環境ではスキップするテスト",
-]

@@ -10,9 +10,15 @@ DemoQA（https://demoqa.com/）を対象とした
   - 統合申請ワークフロー（CRUD操作を通した一連のデータ整合性検証）
 """
 import re
+import sys
+from pathlib import Path
 
-import pytest
-from playwright.sync_api import Page, expect
+sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
+
+from playwright.sync_api import Page, expect, sync_playwright
+from runner import TestRunner
+from evidence import Evidence, load_test_employees, generate_evidence_report
 
 from pages.demoqa.form_page import DemoQAFormPage
 from pages.demoqa.web_tables_page import DemoQAWebTablesPage
@@ -47,7 +53,6 @@ def _remove_fixed_ban(page: Page):
     """)
 
 
-@pytest.mark.slow
 class TestApplicationFormFlow:
     """申請ワークフローのE2Eシナリオテストクラス"""
 
@@ -386,3 +391,55 @@ class TestApplicationFormFlow:
             f"最終={after_delete_count}"
         )
         evidence.capture("削除後_最終状態")
+
+
+def main():
+    runner = TestRunner("test_e2e_application_form")
+    session_id = __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S")
+    test_employees = load_test_employees()
+    all_evidence = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        instance = TestApplicationFormFlow()
+
+        test_specs = [
+            (instance.test_submit_practice_form, True),
+            (instance.test_form_required_fields_validation, False),
+            (instance.test_web_table_add_record, True),
+            (instance.test_web_table_search, True),
+            (instance.test_web_table_edit_record, False),
+            (instance.test_web_table_delete_record, False),
+            (instance.test_complete_application_workflow, True),
+        ]
+
+        for test_func, needs_employees in test_specs:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+
+            output_dir = Path(__file__).resolve().parent.parent.parent / "output"
+            scenario_name = Path(__file__).stem.replace("test_e2e_", "")
+            evidence_dir = output_dir / "evidence" / "scenarios" / scenario_name / session_id
+            ev = Evidence(test_func.__name__, evidence_dir, page)
+
+            if needs_employees:
+                runner.run(test_func, page, test_employees, ev)
+            else:
+                runner.run(test_func, page, ev)
+
+            all_evidence.append(ev.metadata())
+            context.close()
+
+        browser.close()
+
+    scenario_name = Path(__file__).stem.replace("test_e2e_", "")
+    generate_evidence_report(scenario_name, all_evidence, session_id)
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

@@ -12,26 +12,19 @@ Google（https://www.google.com/）を対象とした
 注意: Google はヘッドレスモードで bot 検知を行うため、
       headed モード（--headed）での実行を推奨。
 """
-import pytest
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(Path(__file__).parent))
+
 from playwright.sync_api import Page, expect, sync_playwright
+from runner import TestRunner
+from evidence import Evidence, generate_evidence_report
 
 from pages.google.search_page import GoogleSearchPage
 
 
-@pytest.fixture(scope="module")
-def browser():
-    """Google bot 検知を回避するための起動引数付きブラウザ"""
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(
-        headless=True,
-        args=["--disable-blink-features=AutomationControlled"],
-    )
-    yield browser
-    browser.close()
-    pw.stop()
-
-
-@pytest.mark.slow
 class TestGoogleSearchFlow:
     """Google 検索フローの E2E シナリオテストクラス"""
 
@@ -94,3 +87,49 @@ class TestGoogleSearchFlow:
 
         expect(search_page.search_input).to_be_visible()
         evidence.capture("検索ボックス表示確認")
+
+
+def main():
+    runner = TestRunner("test_e2e_google_search")
+    session_id = __import__("datetime").datetime.now().strftime("%Y%m%d_%H%M%S")
+    all_evidence = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--disable-blink-features=AutomationControlled"],
+        )
+        instance = TestGoogleSearchFlow()
+
+        test_methods = [
+            instance.test_google_page_title,
+            instance.test_search_microsoft_and_view_results,
+            instance.test_search_box_is_visible,
+        ]
+
+        for test_func in test_methods:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+
+            output_dir = Path(__file__).resolve().parent.parent.parent / "output"
+            scenario_name = Path(__file__).stem.replace("test_e2e_", "")
+            evidence_dir = output_dir / "evidence" / "scenarios" / scenario_name / session_id
+            ev = Evidence(test_func.__name__, evidence_dir, page)
+
+            runner.run(test_func, page, ev)
+            all_evidence.append(ev.metadata())
+            context.close()
+
+        browser.close()
+
+    scenario_name = Path(__file__).stem.replace("test_e2e_", "")
+    generate_evidence_report(scenario_name, all_evidence, session_id)
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

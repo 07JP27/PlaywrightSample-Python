@@ -4,8 +4,20 @@ test_01_browser_launch.py - ブラウザ起動・管理のサンプル
 Playwright がサポートする3つのブラウザエンジン（Chromium, Firefox, WebKit）の
 起動方法と各種オプションを示す。
 """
-import pytest
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import sync_playwright
+
+from runner import TestRunner
+
+SKIP_TESTS = {
+    "test_launch_headful": "ヘッドフルモードはCI環境では実行不可",
+    "test_launch_with_channel_chrome": "channel はインストール済みブラウザが必要",
+    "test_launch_with_channel_msedge": "channel はインストール済みブラウザが必要",
+}
 
 
 def test_launch_chromium():
@@ -49,7 +61,6 @@ def test_launch_headless():
         browser.close()
 
 
-@pytest.mark.skip(reason="ヘッドフルモードはCI環境では実行不可")
 def test_launch_headful():
     """ヘッドフルモード（GUI あり）でブラウザを起動する"""
     with sync_playwright() as p:
@@ -72,7 +83,6 @@ def test_launch_with_slow_mo():
         browser.close()
 
 
-@pytest.mark.skip(reason="channel はインストール済みブラウザが必要")
 def test_launch_with_channel_chrome():
     """channel 指定でインストール済みの Google Chrome を使用する"""
     with sync_playwright() as p:
@@ -84,7 +94,6 @@ def test_launch_with_channel_chrome():
         browser.close()
 
 
-@pytest.mark.skip(reason="channel はインストール済みブラウザが必要")
 def test_launch_with_channel_msedge():
     """channel 指定でインストール済みの Microsoft Edge を使用する"""
     with sync_playwright() as p:
@@ -146,3 +155,27 @@ def test_browser_is_connected():
 
         # close() 後は切断状態になる
         assert browser.is_connected() is False
+
+
+def main():
+    runner = TestRunner("test_01_browser_launch")
+    all_tests = [
+        test_launch_chromium,
+        test_launch_firefox,
+        test_launch_webkit,
+        test_launch_headless,
+        test_launch_headful,
+        test_launch_with_slow_mo,
+        test_launch_with_channel_chrome,
+        test_launch_with_channel_msedge,
+        test_launch_with_args,
+        test_browser_version,
+        test_browser_is_connected,
+    ]
+    for t in all_tests:
+        runner.run(t, skip_reason=SKIP_TESTS.get(t.__name__))
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

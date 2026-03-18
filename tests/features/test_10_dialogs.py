@@ -5,36 +5,13 @@ alert, confirm, prompt のブラウザダイアログを
 ハンドリングする方法を示す。ハンドラーはアクション実行前に登録する必要がある。
 """
 
-import pytest
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import sync_playwright
-
-
-@pytest.fixture(scope="module")
-def browser():
-    """Playwright ブラウザの起動と終了を管理"""
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(headless=True)
-    yield browser
-    browser.close()
-    pw.stop()
-
-@pytest.fixture
-def context(browser):
-    """各テスト用のブラウザコンテキストを作成"""
-    context = browser.new_context(
-        viewport={"width": 1280, "height": 720},
-        locale="ja-JP",
-        timezone_id="Asia/Tokyo",
-    )
-    yield context
-    context.close()
-
-@pytest.fixture
-def page(context):
-    """各テスト用のページを作成"""
-    page = context.new_page()
-    yield page
-    page.close()
+from runner import TestRunner
 
 
 # ---------------------------------------------------------------------------
@@ -212,3 +189,35 @@ def test_once_handler_multiple_dialogs(page):
     # 各ハンドラーがそれぞれ1回だけ呼ばれたことを確認
     assert first_messages == ["最初のダイアログ"]
     assert second_messages == ["次のダイアログ"]
+
+
+def main():
+    runner = TestRunner("test_10_dialogs")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        for test_func in [
+            test_alert_dialog,
+            test_confirm_accept,
+            test_confirm_dismiss,
+            test_prompt_accept_with_text,
+            test_prompt_dismiss,
+            test_dialog_properties_alert,
+            test_dialog_properties_confirm,
+            test_dialog_properties_prompt,
+            test_once_handler,
+            test_once_handler_multiple_dialogs,
+        ]:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+            runner.run(test_func, page)
+            context.close()
+        browser.close()
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

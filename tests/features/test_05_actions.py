@@ -4,38 +4,13 @@ test_05_actions.py - ユーザーアクション・入力操作のサンプル
 テキスト入力、クリック、キーボード・マウス操作など
 ブラウザ上でのユーザーインタラクションを網羅する。
 """
-import pytest
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import expect, sync_playwright
-
-
-@pytest.fixture(scope="module")
-def browser():
-    """Playwright ブラウザの起動と終了を管理"""
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(headless=True)
-    yield browser
-    browser.close()
-    pw.stop()
-
-
-@pytest.fixture
-def context(browser):
-    """各テスト用のブラウザコンテキストを作成"""
-    context = browser.new_context(
-        viewport={"width": 1280, "height": 720},
-        locale="ja-JP",
-        timezone_id="Asia/Tokyo",
-    )
-    yield context
-    context.close()
-
-
-@pytest.fixture
-def page(context):
-    """各テスト用のページを作成"""
-    page = context.new_page()
-    yield page
-    page.close()
+from runner import TestRunner
 
 
 # ---------------------------------------------------------------------------
@@ -647,3 +622,72 @@ def test_scroll_into_view_and_interact(page):
     btn.scroll_into_view_if_needed()
     btn.click()
     assert btn.text_content().strip() == "発見！"
+
+
+def main():
+    runner = TestRunner("test_05_actions")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+
+        page_tests = [
+            test_fill,
+            test_fill_textarea,
+            test_fill_replaces_existing_value,
+            test_press_sequentially,
+            test_press_sequentially_with_events,
+            test_clear,
+            test_clear_textarea,
+            test_click,
+            test_click_link,
+            test_dblclick,
+            test_right_click,
+            test_click_with_shift,
+            test_click_with_control,
+            test_click_with_position,
+            test_click_with_force,
+            test_hover,
+            test_hover_shows_hidden_element,
+            test_check,
+            test_uncheck,
+            test_check_radio,
+            test_set_checked_on,
+            test_set_checked_off,
+            test_set_checked_toggle,
+            test_select_option_by_value,
+            test_select_option_by_label,
+            test_select_option_by_index,
+            test_select_option_multiple,
+            test_drag_to,
+            test_keyboard_press_enter,
+            test_keyboard_press_tab,
+            test_keyboard_press_escape,
+            test_keyboard_press_arrow_keys,
+            test_keyboard_type,
+            test_keyboard_select_all,
+            test_keyboard_copy_paste,
+            test_keyboard_undo,
+            test_mouse_click_coordinates,
+            test_mouse_move,
+            test_mouse_down_up,
+            test_mouse_wheel,
+            test_focus,
+            test_focus_triggers_event,
+            test_scroll_into_view_if_needed,
+            test_scroll_into_view_and_interact,
+        ]
+        for test_func in page_tests:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+            runner.run(test_func, page)
+            context.close()
+
+        browser.close()
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

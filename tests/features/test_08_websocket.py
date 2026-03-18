@@ -6,19 +6,25 @@ route_web_socket は Playwright v1.48+ で利用可能。
 """
 
 import asyncio
+import contextlib
+import sys
 import threading
+from pathlib import Path
 
-import pytest
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 import websockets
 from playwright.sync_api import sync_playwright
 
+from runner import TestRunner
+
 
 # ---------------------------------------------------------------------------
-# テスト用 WebSocket エコーサーバー（フィクスチャ）
+# テスト用 WebSocket エコーサーバー（コンテキストマネージャ）
 # ---------------------------------------------------------------------------
-@pytest.fixture()
-def ws_server():
-    """テスト用 WebSocket エコーサーバーを起動・終了するフィクスチャ"""
+@contextlib.contextmanager
+def ws_echo_server():
+    """WebSocket エコーサーバーを起動・終了するコンテキストマネージャ"""
 
     async def echo(ws):
         async for message in ws:
@@ -32,7 +38,7 @@ def ws_server():
         async with websockets.serve(echo, "localhost", 0) as server:
             port_holder["port"] = server.sockets[0].getsockname()[1]
             ready.set()
-            await stop.wait()  # テスト終了まで待機
+            await stop.wait()
 
     loop = asyncio.new_event_loop()
     t = threading.Thread(target=loop.run_until_complete, args=(run(),), daemon=True)
@@ -48,34 +54,6 @@ def _setup_ws_page(page, *, html: str):
     """WebSocket ルーティングを有効にするためページを初期化してからコンテンツを設定"""
     page.goto("about:blank")
     page.set_content(html)
-
-
-@pytest.fixture(scope="module")
-def browser():
-    """Playwright ブラウザの起動と終了を管理"""
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(headless=True)
-    yield browser
-    browser.close()
-    pw.stop()
-
-@pytest.fixture
-def context(browser):
-    """各テスト用のブラウザコンテキストを作成"""
-    context = browser.new_context(
-        viewport={"width": 1280, "height": 720},
-        locale="ja-JP",
-        timezone_id="Asia/Tokyo",
-    )
-    yield context
-    context.close()
-
-@pytest.fixture
-def page(context):
-    """各テスト用のページを作成"""
-    page = context.new_page()
-    yield page
-    page.close()
 
 
 # ---------------------------------------------------------------------------
@@ -212,3 +190,50 @@ def test_websocket_frame_monitoring(page, ws_server):
     assert any("echo:frame_test" in f for f in received_frames), (
         f"受信フレームに 'echo:frame_test' が見つからない: {received_frames}"
     )
+
+
+# ---------------------------------------------------------------------------
+# メイン実行
+# ---------------------------------------------------------------------------
+def main():
+    runner = TestRunner("test_08_websocket")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+
+        # --- モックベースのテスト (サーバー不要) ---
+        mock_tests = [
+            test_websocket_mock,
+            test_websocket_send_receive_mock,
+        ]
+        for test_func in mock_tests:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+            runner.run(test_func, page)
+            context.close()
+
+        # --- サーバー利用テスト ---
+        with ws_echo_server() as ws_server:
+            server_tests = [
+                test_websocket_event_monitoring,
+                test_websocket_frame_monitoring,
+            ]
+            for test_func in server_tests:
+                context = browser.new_context(
+                    viewport={"width": 1280, "height": 720},
+                    locale="ja-JP",
+                    timezone_id="Asia/Tokyo",
+                )
+                page = context.new_page()
+                runner.run(test_func, page, ws_server)
+                context.close()
+
+        browser.close()
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()

@@ -6,42 +6,18 @@ test_09_file_operations.py - ファイル操作のサンプル
 """
 
 import os
+import sys
 from pathlib import Path
 
-import pytest
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from playwright.sync_api import sync_playwright
+
+from runner import TestRunner
 
 # プロジェクトルートからの相対パスでアップロード用ファイルを指定
 PROJECT_ROOT = Path(__file__).parent.parent
 UPLOAD_FILE = PROJECT_ROOT / "data" / "upload_sample.txt"
-
-
-@pytest.fixture(scope="module")
-def browser():
-    """Playwright ブラウザの起動と終了を管理"""
-    pw = sync_playwright().start()
-    browser = pw.chromium.launch(headless=True)
-    yield browser
-    browser.close()
-    pw.stop()
-
-@pytest.fixture
-def context(browser):
-    """各テスト用のブラウザコンテキストを作成"""
-    context = browser.new_context(
-        viewport={"width": 1280, "height": 720},
-        locale="ja-JP",
-        timezone_id="Asia/Tokyo",
-    )
-    yield context
-    context.close()
-
-@pytest.fixture
-def page(context):
-    """各テスト用のページを作成"""
-    page = context.new_page()
-    yield page
-    page.close()
 
 
 # ---------- ファイルアップロード ----------
@@ -157,3 +133,31 @@ def test_download_file_info(page):
 
     # url: ダウンロード元の URL
     assert download.url.startswith("data:text/plain")
+
+
+def main():
+    runner = TestRunner("test_09_file_operations")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        for test_func in [
+            test_file_upload_via_input,
+            test_multiple_file_upload,
+            test_file_upload_via_file_chooser,
+            test_clear_uploaded_file,
+            test_file_download,
+            test_download_file_info,
+        ]:
+            context = browser.new_context(
+                viewport={"width": 1280, "height": 720},
+                locale="ja-JP",
+                timezone_id="Asia/Tokyo",
+            )
+            page = context.new_page()
+            runner.run(test_func, page)
+            context.close()
+        browser.close()
+    sys.exit(runner.summary())
+
+
+if __name__ == "__main__":
+    main()
