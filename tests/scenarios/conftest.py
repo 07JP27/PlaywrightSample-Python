@@ -126,7 +126,11 @@ def evidence(request, page: Page):
     if request.node.cls:
         test_name = f"{request.node.cls.__name__}__{test_name}"
 
-    evidence_dir = OUTPUT_DIR / "evidence" / _session_id
+    # シナリオ名をテストファイル名から取得（例: test_e2e_ec_purchase → ec_purchase）
+    test_file = Path(request.node.fspath).stem
+    scenario_name = test_file.replace("test_e2e_", "")
+
+    evidence_dir = OUTPUT_DIR / "evidence" / "scenarios" / scenario_name / _session_id
     ev = Evidence(test_name, evidence_dir, page)
 
     yield ev
@@ -135,6 +139,7 @@ def evidence(request, page: Page):
     _all_evidence.append({
         "test_name": test_name,
         "test_nodeid": request.node.nodeid,
+        "scenario": scenario_name,
         "steps": ev.steps,
         "output_dir": str(ev.output_dir),
     })
@@ -145,20 +150,54 @@ def evidence(request, page: Page):
 # ============================================================
 
 def pytest_sessionfinish(session, exitstatus):
-    """テストセッション終了時にHTMLエビデンスレポートを生成する"""
+    """テストセッション終了時にHTMLエビデンスレポートをシナリオ別に生成する"""
     if not _all_evidence:
         return
 
-    report_dir = OUTPUT_DIR / "evidence" / _session_id
-    report_dir.mkdir(parents=True, exist_ok=True)
-    report_filename = f"evidence_report_{_session_id}.html"
-    report_path = report_dir / report_filename
-
     timestamp = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
 
-    # 全テストの統計
-    total_tests = len(_all_evidence)
-    total_steps = sum(len(e["steps"]) for e in _all_evidence)
+    # シナリオごとにグループ化
+    from collections import defaultdict
+    by_scenario = defaultdict(list)
+    for ev_data in _all_evidence:
+        by_scenario[ev_data["scenario"]].append(ev_data)
+
+    generated = []
+    for scenario_name, evidences in by_scenario.items():
+        report_dir = OUTPUT_DIR / "evidence" / "scenarios" / scenario_name / _session_id
+        report_dir.mkdir(parents=True, exist_ok=True)
+        report_filename = f"evidence_{scenario_name}_{_session_id}.html"
+        report_path = report_dir / report_filename
+
+        total_tests = len(evidences)
+        total_steps = sum(len(e["steps"]) for e in evidences)
+
+        html = _generate_report_html(scenario_name, evidences, timestamp, total_tests, total_steps)
+        report_path.write_text(html, encoding="utf-8")
+        generated.append(report_path)
+
+    print(f"\n📋 エビデンスレポート生成完了（{len(generated)} シナリオ）:")
+    for p in generated:
+        print(f"   {p}")
+
+
+def _generate_report_html(
+    scenario_name: str,
+    evidences: list[dict],
+    timestamp: str,
+    total_tests: int,
+    total_steps: int,
+) -> str:
+    """シナリオ単位のHTMLエビデンスレポートを生成する"""
+
+    SCENARIO_LABELS = {
+        "ec_purchase": "EC 購買フロー",
+        "hr_management": "HR 勤怠管理フロー",
+        "portal_auth": "ポータル認証・フォーム操作フロー",
+        "application_form": "申請ワークフロー",
+        "cross_system": "API + UI 複合シナリオ",
+    }
+    label = SCENARIO_LABELS.get(scenario_name, scenario_name)
 
     html_parts = [
         "<!DOCTYPE html>",
@@ -166,7 +205,7 @@ def pytest_sessionfinish(session, exitstatus):
         "<head>",
         "<meta charset='UTF-8'>",
         "<meta name='viewport' content='width=device-width, initial-scale=1.0'>",
-        f"<title>E2E テストエビデンスレポート — {timestamp}</title>",
+        f"<title>エビデンスレポート — {label} — {timestamp}</title>",
         "<style>",
         """
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -207,8 +246,8 @@ def pytest_sessionfinish(session, exitstatus):
         "</head>",
         "<body>",
         "<div class='header'>",
-        "<h1>📋 E2E テストエビデンスレポート</h1>",
-        f"<div class='meta'>生成日時: {timestamp} ｜ Playwright for Python</div>",
+        f"<h1>📋 {label} — エビデンスレポート</h1>",
+        f"<div class='meta'>生成日時: {timestamp} ｜ シナリオ: {scenario_name} ｜ Playwright for Python</div>",
         "</div>",
         "<div class='summary'>",
         f"<div class='summary-card'><div class='number'>{total_tests}</div><div class='label'>テストケース</div></div>",
@@ -220,7 +259,7 @@ def pytest_sessionfinish(session, exitstatus):
     html_parts.append("<div class='toc'>")
     html_parts.append("<h2>📑 目次</h2>")
     html_parts.append("<ul>")
-    for ev_data in _all_evidence:
+    for ev_data in evidences:
         step_count = len(ev_data["steps"])
         html_parts.append(
             f"<li><a href='#{ev_data['test_name']}'>{ev_data['test_name']}</a>"
@@ -230,13 +269,12 @@ def pytest_sessionfinish(session, exitstatus):
     html_parts.append("</div>")
 
     # 各テストセクション
-    for ev_data in _all_evidence:
+    for ev_data in evidences:
         test_name = ev_data["test_name"]
         html_parts.append(f"<div class='test-section' id='{test_name}'>")
         html_parts.append(f"<h2>🔍 {test_name}</h2>")
 
         for step in ev_data["steps"]:
-            # スクリーンショットへの相対パス
             img_rel_path = f"{test_name}/{step['filename']}"
             html_parts.append("<div class='step'>")
             html_parts.append(f"<div class='step-number'>{step['step']}</div>")
@@ -256,17 +294,8 @@ def pytest_sessionfinish(session, exitstatus):
 
         html_parts.append("</div>")
 
-    html_parts.append(f"<div class='footer'>E2E Test Evidence Report — Generated by pytest + Playwright</div>")
+    html_parts.append("<div class='footer'>E2E Test Evidence Report — Generated by pytest + Playwright</div>")
     html_parts.append("</body></html>")
 
-    report_path.write_text("\n".join(html_parts), encoding="utf-8")
-
-    # 最新レポートへのシンボリックリンクを作成
-    latest_link = OUTPUT_DIR / "evidence" / "latest"
-    if latest_link.is_symlink() or latest_link.exists():
-        latest_link.unlink()
-    latest_link.symlink_to(_session_id)
-
-    print(f"\n📋 エビデンスレポート生成完了: {report_path}")
-    print(f"   最新レポート: {latest_link / report_filename}")
+    return "\n".join(html_parts)
 
