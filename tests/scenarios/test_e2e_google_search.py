@@ -17,6 +17,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from playwright.sync_api import Page, expect, sync_playwright
 from runner import TestRunner
@@ -96,7 +97,7 @@ def main():
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
-            headless=True,
+            headless=False,
             args=["--disable-blink-features=AutomationControlled"],
         )
         instance = TestGoogleSearchFlow()
@@ -113,6 +114,7 @@ def main():
                 locale="ja-JP",
                 timezone_id="Asia/Tokyo",
             )
+            context.tracing.start(screenshots=True, snapshots=True, sources=True)
             page = context.new_page()
 
             output_dir = Path(__file__).resolve().parent.parent.parent / "output"
@@ -122,6 +124,8 @@ def main():
 
             runner.run(test_func, page, ev)
             all_evidence.append(ev.metadata())
+            trace_path = evidence_dir / test_func.__name__ / "trace.zip"
+            context.tracing.stop(path=str(trace_path))
             context.close()
 
         browser.close()

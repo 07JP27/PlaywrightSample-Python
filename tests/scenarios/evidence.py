@@ -206,7 +206,9 @@ def _generate_report_html(
             html_parts.append("<div class='step-meta'>")
             html_parts.append(f"<span>🕐 {step['timestamp']}</span>")
             html_parts.append(f"<span>🌐 {step['url']}</span>")
-            html_parts.append("</div></div></div>")
+            html_parts.append("</div>")
+            html_parts.append(f"<div class='step-screenshot'><img src='{img_rel_path}' alt='{step['description']}'></div>")
+            html_parts.append("</div></div>")
 
         if not ev_data["steps"]:
             html_parts.append("<div class='step'><div class='step-info'>エビデンスなし</div></div>")
